@@ -144,12 +144,6 @@ fn run_ios(args: &Args) {
     watch_directory(&watch_dir);
 
     launch_sim();
-
-    println!("Running iOS");
-    // match simulator {
-    //     Some(x) => { println!("with simulator: {}", x); }
-    //     None => { /* handle the None case */ }
-    // }
 }
 
 fn run_android() {
