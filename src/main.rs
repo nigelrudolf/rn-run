@@ -113,7 +113,7 @@ fn watch_directory(watch_dir: &str) {
         .expect("Failed to execute watchman watch-project command");
 }
 
-fn launch_sim(){
+fn launch_sim(args: &Args) {
     let current_dir = env::current_dir()
         .expect("Failed to get current directory")
         .to_str()
@@ -123,8 +123,9 @@ fn launch_sim(){
     Command::new("osascript")
         .arg("-e")
         .arg(format!(
-            "tell application \"Terminal\" to do script \"cd {}; ipad-mini\"",
-            current_dir
+            "tell application \"Terminal\" to do script \"cd {}; {}\"",
+            current_dir,
+            args.simulator.as_ref().unwrap_or(&"yarn react-native run-ios".to_string())
         ))
         .status()
         .expect("Failed to execute osascript command");
@@ -143,7 +144,7 @@ fn run_ios(args: &Args) {
 
     watch_directory(&watch_dir);
 
-    launch_sim();
+    launch_sim(args);
 }
 
 fn run_android() {
