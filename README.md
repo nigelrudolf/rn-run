@@ -32,11 +32,9 @@ On MacOS you will need to set **Ask before closing** to **Never** in Terminal se
 
 ## Installation
 
-1. Install Rust
+1. Install Rust, more info: https://www.rust-lang.org/learn/get-started
 ```
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
-more info: https://www.rust-lang.org/learn/get-started
 ```
 
 2. Clone repo
