@@ -113,6 +113,23 @@ fn watch_directory(watch_dir: &str) {
         .expect("Failed to execute watchman watch-project command");
 }
 
+fn launch_sim(){
+    let current_dir = env::current_dir()
+        .expect("Failed to get current directory")
+        .to_str()
+        .expect("Failed to convert current directory to string")
+        .to_owned();
+
+    Command::new("osascript")
+        .arg("-e")
+        .arg(format!(
+            "tell application \"Terminal\" to do script \"cd {}; ipad-mini\"",
+            current_dir
+        ))
+        .status()
+        .expect("Failed to execute osascript command");
+}
+
 fn run_ios(args: &Args) {
     let watch_dir = get_current_directory();
 
@@ -125,6 +142,8 @@ fn run_ios(args: &Args) {
     }
 
     watch_directory(&watch_dir);
+
+    launch_sim();
 
     println!("Running iOS");
     // match simulator {
