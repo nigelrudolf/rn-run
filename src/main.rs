@@ -21,7 +21,7 @@ struct Args {
 
     /// Clean install
     #[arg(short, long)]
-    clean: bool,
+    clean_install: bool,
 }
 
 fn get_current_directory() -> String {
@@ -35,7 +35,6 @@ fn get_current_directory() -> String {
 
     current_dir
 }
-
 
 fn kill_process() {
     let output = Command::new("lsof")
@@ -138,7 +137,7 @@ fn run_ios(args: &Args) {
     quit_simulator();
     close_terminal_windows();
 
-    if args.clean {
+    if args.clean_install {
         clean_install();
     }
 
@@ -154,12 +153,10 @@ fn run_android() {
 fn main() {
     let args = Args::parse();
 
-    if args.ios {
-        run_ios(&args);
-    }
-
-    if args.android {
-        run_android();
+    match args {
+        Args { ios: true, .. } => run_ios(&args),
+        Args { android: true, .. } => run_android(),
+        _ => println!("No platform specified, use --help for more info"),
     }
 
 }
