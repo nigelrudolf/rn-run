@@ -1,3 +1,4 @@
+use std::env;
 use clap::Parser;
 
 /// Run react native app on ios or android
@@ -22,6 +23,9 @@ struct Args {
 }
 
 fn run_ios(simulator: Option<String>) {
+    let watch_dir = env::current_dir().unwrap();
+    println!("Watching directory: {:?}", watch_dir);
+
     println!("Running iOS");
     match simulator {
         Some(x) => { println!("with simulator: {}", x); }
