@@ -57,6 +57,14 @@ fn quit_simulator() {
         .expect("Failed to execute osascript command");
 }
 
+fn close_terminal_windows() {
+    Command::new("osascript")
+        .arg("-e")
+        .arg("tell application \"Terminal\" to close (every window)")
+        .status()
+        .expect("Failed to execute osascript command");
+}
+
 fn run_ios(simulator: Option<String>) {
     match env::current_dir() {
         Ok(watch_dir) => {
@@ -71,6 +79,7 @@ fn run_ios(simulator: Option<String>) {
 
     kill_process();
     quit_simulator();
+    close_terminal_windows();
 
     println!("Running iOS");
     match simulator {
