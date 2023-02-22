@@ -65,7 +65,26 @@ fn close_terminal_windows() {
         .expect("Failed to execute osascript command");
 }
 
-fn run_ios(simulator: Option<String>) {
+fn clean_install() {
+    Command::new("rm")
+        .arg("-rf")
+        .arg("node_modules")
+        .status()
+        .expect("Failed to execute rm command");
+
+    Command::new("yarn")
+        .arg("install")
+        .status()
+        .expect("Failed to execute yarn command");
+
+    Command::new("sh")
+        .arg("-c")
+        .arg("cd ios && pod install && cd ..")
+        .status()
+        .expect("Failed to execute shell command");
+}
+
+fn run_ios(args: &Args) {
     match env::current_dir() {
         Ok(watch_dir) => {
             println!("Watching directory: {:?}", watch_dir);
@@ -81,11 +100,15 @@ fn run_ios(simulator: Option<String>) {
     quit_simulator();
     close_terminal_windows();
 
-    println!("Running iOS");
-    match simulator {
-        Some(x) => { println!("with simulator: {}", x); }
-        None => { /* handle the None case */ }
+    if args.clean {
+        clean_install();
     }
+
+    println!("Running iOS");
+    // match simulator {
+    //     Some(x) => { println!("with simulator: {}", x); }
+    //     None => { /* handle the None case */ }
+    // }
 }
 
 fn run_android() {
@@ -96,7 +119,7 @@ fn main() {
     let args = Args::parse();
 
     if args.ios {
-        run_ios(args.simulator);
+        run_ios(&args);
     }
 
     if args.android {
