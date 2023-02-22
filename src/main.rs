@@ -24,6 +24,19 @@ struct Args {
     clean: bool,
 }
 
+fn get_current_directory() -> String {
+    let current_dir = env::current_dir()
+        .expect("Failed to get current directory")
+        .to_str()
+        .expect("Failed to convert current directory to string")
+        .to_owned();
+
+    println!("Current directory: {}", current_dir);
+
+    current_dir
+}
+
+
 fn kill_process() {
     let output = Command::new("lsof")
         .arg("-i")
@@ -84,17 +97,24 @@ fn clean_install() {
         .expect("Failed to execute shell command");
 }
 
+fn watch_directory(watch_dir: &str) {
+    println!("Watching directory: {}", watch_dir);
+
+    Command::new("watchman")
+        .arg("watch-del")
+        .arg(watch_dir)
+        .status()
+        .expect("Failed to execute watchman watch-del command");
+
+    Command::new("watchman")
+        .arg("watch-project")
+        .arg(watch_dir)
+        .status()
+        .expect("Failed to execute watchman watch-project command");
+}
+
 fn run_ios(args: &Args) {
-    match env::current_dir() {
-        Ok(watch_dir) => {
-            println!("Watching directory: {:?}", watch_dir);
-            // Do something with the watch_dir path
-        }
-        Err(e) => {
-            eprintln!("Error getting current directory: {}", e);
-            // Handle the error case
-        }
-    }
+    let watch_dir = get_current_directory();
 
     kill_process();
     quit_simulator();
@@ -103,6 +123,8 @@ fn run_ios(args: &Args) {
     if args.clean {
         clean_install();
     }
+
+    watch_directory(&watch_dir);
 
     println!("Running iOS");
     // match simulator {
