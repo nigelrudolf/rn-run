@@ -22,9 +22,23 @@ struct Args {
     clean: bool,
 }
 
+fn kill_process() {
+    println!("Killing process");
+}
+
 fn run_ios(simulator: Option<String>) {
-    let watch_dir = env::current_dir().unwrap();
-    println!("Watching directory: {:?}", watch_dir);
+    match env::current_dir() {
+        Ok(watch_dir) => {
+            println!("Watch directory: {:?}", watch_dir);
+            // Do something with the watch_dir path
+        }
+        Err(e) => {
+            eprintln!("Error getting current directory: {}", e);
+            // Handle the error case
+        }
+    }
+
+    kill_process();
 
     println!("Running iOS");
     match simulator {
