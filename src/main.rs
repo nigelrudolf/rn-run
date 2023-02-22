@@ -52,7 +52,7 @@ fn kill_process() {
 fn run_ios(simulator: Option<String>) {
     match env::current_dir() {
         Ok(watch_dir) => {
-            println!("Watch directory: {:?}", watch_dir);
+            println!("Watching directory: {:?}", watch_dir);
             // Do something with the watch_dir path
         }
         Err(e) => {
