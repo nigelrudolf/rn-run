@@ -29,11 +29,19 @@ fn run_ios(simulator: Option<String>) {
     }
 }
 
+fn run_android() {
+    println!("Running Android");
+}
+
 fn main() {
     let args = Args::parse();
 
     if args.ios {
         run_ios(args.simulator);
+    }
+
+    if args.android {
+        run_android();
     }
 
 }
