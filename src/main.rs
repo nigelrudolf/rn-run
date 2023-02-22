@@ -1,5 +1,7 @@
 use std::env;
 use clap::Parser;
+use std::process::Command;
+
 
 /// Run react native app on ios or android
 #[derive(Parser, Debug)]
@@ -23,7 +25,28 @@ struct Args {
 }
 
 fn kill_process() {
-    println!("Killing process");
+    let output = Command::new("lsof")
+        .arg("-i")
+        .arg(":8081")
+        .arg("-t")
+        .output()
+        .expect("Failed to execute lsof command");
+
+    let pids = String::from_utf8_lossy(&output.stdout)
+        .split_whitespace()
+        .map(|pid| pid.parse::<u32>().expect("Failed to parse PID"))
+        .collect::<Vec<u32>>();
+
+    if pids.is_empty() {
+        println!("No process running on port 8081");
+    } else {
+        for pid in pids {
+            Command::new("kill")
+                .arg(pid.to_string())
+                .spawn()
+                .expect("Failed to execute kill command");
+        }
+    }
 }
 
 fn run_ios(simulator: Option<String>) {
