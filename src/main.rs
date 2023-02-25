@@ -1,28 +1,9 @@
+mod args;
 use std::env;
-use clap::Parser;
 use std::process::Command;
+use clap::Parser;
+use args::Args;
 
-
-/// Run react native app on ios or android
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-struct Args {
-    /// Run iOS
-    #[arg(short, long)]
-    ios: bool,
-
-    /// Run Android
-    #[arg(short, long)]
-    android: bool,
-
-    // Simulator
-    #[arg(short, long)]
-    simulator: Option<String>,
-
-    /// Clean install
-    #[arg(short, long)]
-    clean_install: bool,
-}
 
 fn get_current_directory() -> String {
     let current_dir = env::current_dir()
