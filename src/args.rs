@@ -1,4 +1,3 @@
-
 use clap::Parser;
 
 /// Run react native app on ios or android
