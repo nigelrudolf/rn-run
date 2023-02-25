@@ -1,7 +1,7 @@
-use std::{env, process::Command};
+use std::{env, process::Command, io::Error};
 use crate::args::Args;
 
-pub fn get_current_directory() -> String {
+pub fn get_current_directory() -> Result<String, Error> {
     let current_dir = env::current_dir()
         .expect("Failed to get current directory")
         .to_str()
@@ -10,7 +10,7 @@ pub fn get_current_directory() -> String {
 
     println!("Current directory: {}", current_dir);
 
-    current_dir
+    Ok(current_dir)
 }
 
 pub fn kill_process() {
@@ -73,18 +73,28 @@ pub fn clean_install() {
         .expect("Failed to execute shell command");
 }
 
-pub fn watch_directory(watch_dir: &str) {
-    println!("Watching directory: {}", watch_dir);
+pub fn watch_directory(watch_dir: &Result<String, Error>) {
+    
+    let watch_dir_str = match watch_dir.as_ref() {
+        Ok(s) => {
+            println!("Watching directory: {}", s);
+            s
+        },
+        Err(e) => {
+            println!("Error: {:?}", e);
+            return;
+        }
+    };
 
     Command::new("watchman")
         .arg("watch-del")
-        .arg(watch_dir)
+        .arg(watch_dir_str)
         .status()
         .expect("Failed to execute watchman watch-del command");
 
     Command::new("watchman")
         .arg("watch-project")
-        .arg(watch_dir)
+        .arg(watch_dir_str)
         .status()
         .expect("Failed to execute watchman watch-project command");
 }

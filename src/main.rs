@@ -16,5 +16,4 @@ fn main() {
         Args { android: true, .. } => run_android(),
         _ => println!("No platform specified, use --help for more info"),
     }
-
 }

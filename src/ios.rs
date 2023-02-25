@@ -6,8 +6,7 @@ use crate::utils::{
     close_terminal_windows, 
     clean_install, 
     watch_directory, 
-    launch_sim
-};
+    launch_sim};
 
 pub fn run_ios(args: &Args) {
     let watch_dir = get_current_directory();
