@@ -2,6 +2,7 @@ mod args;
 mod utils;
 mod ios;
 mod android;
+mod main_test;
 
 use clap::Parser;
 use args::Args;

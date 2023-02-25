@@ -173,7 +173,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rn-run-rs"
+name = "rn-run"
 version = "0.1.0"
 dependencies = [
  "clap",
