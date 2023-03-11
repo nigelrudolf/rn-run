@@ -3,6 +3,14 @@ name = "rn-run"
 version = "0.1.0"
 edition = "2021"
 
+authors = ["nigelrudolf <mansell.nigel@mac.com>"]
+description = "A simple CLI tool to run react native projects"
+license = "MIT"
+repository = "https://github.com/nigelrudolf/rn-run"
+documentation =  "https://github.com/nigelrudolf/rn-run"
+homepage =  "https://github.com/nigelrudolf/rn-run"
+
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
