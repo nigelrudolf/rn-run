@@ -43,12 +43,9 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 git clone https://github.com/nigelrudolf/rn-run.git ~/Downloads/rn-run
 ```
 
-3. Build
+3. Build & Install
 ```
-cd ~/Downloads/rn-run/ && cargo build 
+cargo install --path ~/Downloads/rn-run/
 ```
 
-4. Copy to `/usr/local/bin`
-```
-sudo cp ~/Downloads/rn-run/target/debug/rn-run /usr/local/bin
-```
+This will build and install the script to `~/.cargo/bin/` on MacOS and add it to your PATH. 
