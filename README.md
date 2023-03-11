@@ -37,15 +37,9 @@ On MacOS you will need to set **Ask before closing** to **Never** in Terminal se
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-2. Clone repo
-
+2. Build & Install
 ```
-git clone https://github.com/nigelrudolf/rn-run.git ~/Downloads/rn-run
-```
-
-3. Build & Install
-```
-cargo install --path ~/Downloads/rn-run/
+cargo install rn-run
 ```
 
 This will build and install the script to `~/.cargo/bin/` on MacOS and add it to your PATH. 
