@@ -99,6 +99,22 @@ pub fn watch_directory(watch_dir: &Result<String, Error>) {
         .expect("Failed to execute watchman watch-project command");
 }
 
+pub fn launch_packager() {
+    let current_dir = env::current_dir()
+    .expect("Failed to get current directory")
+    .to_str()
+    .expect("Failed to convert current directory to string")
+    .to_owned();
+
+    Command::new("osascript")
+        .arg("-e")
+        .arg(format!(
+            "tell application \"Terminal\" to do script \"cd {}; yarn start\"",
+            current_dir))
+        .status()
+        .expect("Failed to execute osascript command");
+}
+
 pub fn launch_sim(args: &Args) {
     let current_dir = env::current_dir()
         .expect("Failed to get current directory")

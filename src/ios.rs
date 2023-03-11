@@ -5,7 +5,8 @@ use crate::utils::{
     quit_simulator, 
     close_terminal_windows, 
     clean_install, 
-    watch_directory, 
+    watch_directory,
+    launch_packager,
     launch_sim
 };
 
@@ -21,6 +22,8 @@ pub fn run_ios(args: &Args) {
     }
 
     watch_directory(&watch_dir);
+
+    launch_packager();
 
     launch_sim(args);
 }
