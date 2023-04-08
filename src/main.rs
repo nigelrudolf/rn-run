@@ -14,7 +14,7 @@ fn main() {
 
     match args {
         Args { ios: true, .. } => run_ios(&args),
-        Args { android: true, .. } => run_android(),
+        Args { android: true, .. } => run_android(&args),
         _ => println!("No platform specified, use --help for more info"),
     }
 }

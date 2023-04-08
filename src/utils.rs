@@ -116,18 +116,27 @@ pub fn launch_packager() {
 }
 
 pub fn launch_sim(args: &Args) {
+
+    let command = if args.ios {
+        "yarn react-native run-ios"
+    } else if args.android {
+        "yarn react-native run-android"
+    } else {
+        "echo \"No platform specified, use --help for more info\""
+    };
+
     let current_dir = env::current_dir()
         .expect("Failed to get current directory")
         .to_str()
         .expect("Failed to convert current directory to string")
         .to_owned();
-
+  
     Command::new("osascript")
         .arg("-e")
         .arg(format!(
             "tell application \"Terminal\" to do script \"cd {}; {}\"",
             current_dir,
-            args.simulator.as_ref().unwrap_or(&"yarn react-native run-ios".to_string())
+            args.simulator.as_ref().unwrap_or(&command.to_string())
         ))
         .status()
         .expect("Failed to execute osascript command");
