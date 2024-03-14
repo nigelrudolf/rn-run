@@ -42,4 +42,4 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 cargo install rn-run
 ```
 
-This will build and install the script to `~/.cargo/bin/` on MacOS and add it to your PATH. 
+This will build and install the binary to `~/.cargo/bin/` on MacOS and add it to your PATH. 
