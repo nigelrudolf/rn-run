@@ -25,8 +25,6 @@ fn main() {
 
     let package_json_path = Path::new(&current_dir).join("package.json");
 
-    println!("package_json_path: {}", package_json_path.to_str().unwrap());
-
     match args {
         Args { ios: true, .. } => run_ios(&args, &current_dir, &package_json_path),
         Args { android: true, .. } => run_android(&args, &current_dir, &package_json_path),
