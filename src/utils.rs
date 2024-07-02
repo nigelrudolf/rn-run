@@ -1,11 +1,11 @@
-use std::{env, process::Command, io::Error};
+use std::{env, fs::File, io::{Error, Read}, path::{Path, PathBuf}, process::Command};
 use crate::args::Args;
+use serde::Deserialize;
 
 pub fn get_current_directory() -> Result<String, Error> {
-    let current_dir = env::current_dir()
-        .expect("Failed to get current directory")
+    let current_dir = env::current_dir()?
         .to_str()
-        .expect("Failed to convert current directory to string")
+        .ok_or_else(|| Error::new(std::io::ErrorKind::Other, "Failed to convert current directory to string"))?
         .to_owned();
 
     println!("Current directory: {}", current_dir);
@@ -54,7 +54,50 @@ pub fn close_terminal_windows() {
         .expect("Failed to execute osascript command");
 }
 
-pub fn clean_install() {
+#[derive(Deserialize)]
+pub struct PackageJson {
+    dependencies: Option<std::collections::HashMap<String, String>>,
+}
+
+pub fn read_package_json(path: &Path) -> Result<PackageJson, std::io::Error> {
+    let mut file = File::open(path)?;
+    let mut contents = String::new();
+    file.read_to_string(&mut contents)?;
+    let package_json: PackageJson = serde_json::from_str(&contents)?;
+    Ok(package_json)
+}
+
+pub fn get_react_native_version(package_json: &PackageJson) -> Option<String> {
+    package_json
+        .dependencies
+        .as_ref()?
+        .get("react-native")
+        .cloned()
+}
+
+pub fn clean_install(package_json_path: &PathBuf) {
+
+    if let Ok(package_json) = read_package_json(&package_json_path) {
+        if let Some(react_native_version) = get_react_native_version(&package_json) {
+            println!("React Native version: {}", react_native_version);
+
+            if react_native_version.starts_with("0.74") {
+                // Code for React Native 0.64.x
+                println!("Running code for React Native 0.74.x");
+            } else if react_native_version.starts_with("0.69") {
+                // Code for React Native 0.65.x
+                println!("Running code for React Native 0.69.x");
+            } else {
+                // Code for other versions
+                println!("Running code for other React Native versions");
+            }
+        } else {
+            println!("React Native version not found in package.json");
+        }
+    } else {
+        println!("Failed to read package.json");
+    }
+
     Command::new("rm")
         .arg("-rf")
         .arg("node_modules")
@@ -73,28 +116,18 @@ pub fn clean_install() {
         .expect("Failed to execute shell command");
 }
 
-pub fn watch_directory(watch_dir: &Result<String, Error>) {
-    
-    let watch_dir_str = match watch_dir.as_ref() {
-        Ok(s) => {
-            println!("Watching directory: {}", s);
-            s
-        },
-        Err(e) => {
-            println!("Error: {:?}", e);
-            return;
-        }
-    };
+pub fn watch_directory(watch_dir: &str) {
+    println!("Watching directory: {}", watch_dir);
 
     Command::new("watchman")
         .arg("watch-del")
-        .arg(watch_dir_str)
+        .arg(watch_dir)
         .status()
         .expect("Failed to execute watchman watch-del command");
 
     Command::new("watchman")
         .arg("watch-project")
-        .arg(watch_dir_str)
+        .arg(watch_dir)
         .status()
         .expect("Failed to execute watchman watch-project command");
 }
