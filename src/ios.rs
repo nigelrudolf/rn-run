@@ -1,5 +1,4 @@
 use crate::args::Args;
-use std::path::{PathBuf};
 use crate::utils::{
     kill_process, 
     quit_simulator, 
@@ -10,19 +9,19 @@ use crate::utils::{
     launch_sim,
 };
 
-pub fn run_ios(args: &Args, current_dir: &str, package_json_path: &PathBuf) {
+pub fn run_ios(args: &Args, current_dir: &str, react_native_version: &str) {
 
     kill_process();
     quit_simulator();
     close_terminal_windows();
 
     if args.clean_install {
-        clean_install(package_json_path);
+        clean_install(&react_native_version);
     }
 
     watch_directory(&current_dir);
 
     launch_packager();
 
-    launch_sim(args);
+    launch_sim(&react_native_version, args);
 }

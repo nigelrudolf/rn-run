@@ -1,4 +1,4 @@
-use std::{env, fs::File, io::{Error, Read}, path::{Path, PathBuf}, process::Command};
+use std::{env, fs::File, io::{self, Error, Read}, path::PathBuf, process::Command};
 use crate::args::Args;
 use serde::Deserialize;
 
@@ -59,44 +59,29 @@ pub struct PackageJson {
     dependencies: Option<std::collections::HashMap<String, String>>,
 }
 
-pub fn read_package_json(path: &Path) -> Result<PackageJson, std::io::Error> {
+pub fn get_react_native_version(path: &PathBuf) -> Result<Option<String>, io::Error> {
     let mut file = File::open(path)?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
     let package_json: PackageJson = serde_json::from_str(&contents)?;
-    Ok(package_json)
-}
 
-pub fn get_react_native_version(package_json: &PackageJson) -> Option<String> {
-    package_json
+    let version = package_json
         .dependencies
-        .as_ref()?
-        .get("react-native")
-        .cloned()
+        .as_ref()
+        .and_then(|deps| deps.get("react-native").cloned());
+    
+    Ok(version)
 }
 
-pub fn clean_install(package_json_path: &PathBuf) {
+pub fn clean_install(react_native_version: &str) {
 
-    if let Ok(package_json) = read_package_json(&package_json_path) {
-        if let Some(react_native_version) = get_react_native_version(&package_json) {
-            println!("React Native version: {}", react_native_version);
-
-            if react_native_version.starts_with("0.74") {
-                // Code for React Native 0.64.x
-                println!("Running code for React Native 0.74.x");
-            } else if react_native_version.starts_with("0.69") {
-                // Code for React Native 0.65.x
-                println!("Running code for React Native 0.69.x");
-            } else {
-                // Code for other versions
-                println!("Running code for other React Native versions");
-            }
-        } else {
-            println!("React Native version not found in package.json");
-        }
+    let command = if react_native_version.starts_with("0.74") {
+        "npm"
+    } else if react_native_version.starts_with("0.69") {
+        "yarn"
     } else {
-        println!("Failed to read package.json");
-    }
+        "yarn"
+    };
 
     Command::new("rm")
         .arg("-rf")
@@ -104,7 +89,7 @@ pub fn clean_install(package_json_path: &PathBuf) {
         .status()
         .expect("Failed to execute rm command");
 
-    Command::new("yarn")
+    Command::new(command)
         .arg("install")
         .status()
         .expect("Failed to execute yarn command");
@@ -113,7 +98,7 @@ pub fn clean_install(package_json_path: &PathBuf) {
         .arg("-c")
         .arg("cd ios && pod install && cd ..")
         .status()
-        .expect("Failed to execute shell command");
+        .expect("Failed to execute shell command");   
 }
 
 pub fn watch_directory(watch_dir: &str) {
@@ -148,12 +133,21 @@ pub fn launch_packager() {
         .expect("Failed to execute osascript command");
 }
 
-pub fn launch_sim(args: &Args) {
+pub fn launch_sim(react_native_version: &str, args: &Args) {
 
-    let command = if args.ios {
-        "yarn react-native run-ios"
-    } else if args.android {
-        "yarn react-native run-android"
+    let yarn_ios = "yarn react-native run-ios";
+    let yarn_android = "yarn react-native run-android";
+    let npx_ios = "npx react-native run-ios";
+    let npx_android = "npx react-native run-android";
+
+    let command = if args.ios && react_native_version.starts_with("0.74") {
+        npx_ios
+    } else if args.ios && react_native_version.starts_with("0.69") {
+        yarn_ios
+    } else if args.android && react_native_version.starts_with("0.74") {
+        npx_android
+    } else if args.android && react_native_version.starts_with("0.69") {
+        yarn_android
     } else {
         "echo \"No platform specified, use --help for more info\""
     };
