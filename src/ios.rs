@@ -21,7 +21,11 @@ pub fn run_ios(args: &Args, current_dir: &str, react_native_version: &str) {
 
     watch_directory(&current_dir);
 
-    launch_packager();
+    if react_native_version.starts_with("0.74") {
+        println!("packager will be launched via npx");
+    } else {
+        launch_packager();
+    }
 
     launch_sim(&react_native_version, args);
 }

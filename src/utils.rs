@@ -137,11 +137,11 @@ pub fn launch_sim(react_native_version: &str, args: &Args) {
 
     let yarn_ios = "yarn react-native run-ios";
     let yarn_android = "yarn react-native run-android";
-    let npx_ios = "npx react-native run-ios";
+    let npx_ios = format!("npx react-native run-ios --simulator=\"{}\"", args.simulator.as_ref().unwrap_or(&"iPhone 15".to_string()));
     let npx_android = "npx react-native run-android";
 
     let command = if args.ios && react_native_version.starts_with("0.74") {
-        npx_ios
+        &npx_ios
     } else if args.ios && react_native_version.starts_with("0.69") {
         yarn_ios
     } else if args.android && react_native_version.starts_with("0.74") {
@@ -157,14 +157,16 @@ pub fn launch_sim(react_native_version: &str, args: &Args) {
         .to_str()
         .expect("Failed to convert current directory to string")
         .to_owned();
+
+    let osascript_command = format!(
+        "tell application \"Terminal\" to do script \"cd {}; {}\"",
+        current_dir,
+        command.replace("\"", "\\\"")
+    );
   
     Command::new("osascript")
         .arg("-e")
-        .arg(format!(
-            "tell application \"Terminal\" to do script \"cd {}; {}\"",
-            current_dir,
-            args.simulator.as_ref().unwrap_or(&command.to_string())
-        ))
+        .arg(&osascript_command)
         .status()
         .expect("Failed to execute osascript command");
 }
