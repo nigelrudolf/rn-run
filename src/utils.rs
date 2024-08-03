@@ -137,8 +137,8 @@ pub fn launch_sim(react_native_version: &str, args: &Args) {
 
     let yarn_ios = "yarn react-native run-ios";
     let yarn_android = "yarn react-native run-android";
-    let npx_ios = format!("npx react-native run-ios --simulator=\"{}\"", args.simulator.as_ref().unwrap_or(&"iPhone 15".to_string()));
-    let npx_android = "npx react-native run-android";
+    let npx_ios = format!("npm run prebuild && npx react-native run-ios --simulator=\"{}\"", args.simulator.as_ref().unwrap_or(&"iPhone 15".to_string()));
+    let npx_android = "npm run prebuild && npx react-native run-android";
 
     let command = if args.ios && react_native_version.starts_with("0.74") {
         &npx_ios
