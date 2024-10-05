@@ -4,8 +4,6 @@
 
 Run react native app on ios or android using a single command. This allows you to quickly run different branches without having to stop any processes or quit any programs, just run the command again on a different branch. Run this script in the root of your react native project.
 
-At this time, you do need to have Xcode opened to your workspace and you may also need to be running your debugger: https://github.com/jhen0409/react-native-debugger. Once these are opened and running you don't need to touch them again.
-
 
 ## Usage: 
 ```
