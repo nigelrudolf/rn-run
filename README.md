@@ -2,7 +2,7 @@
 
 ## Description: 
 
-Run react native app on ios or android using a single command. This allows you to quickly run different branches without having to stop any processes or quit any programs, just run the command again on a different branch. Run this script in the root of your react native project.
+Run react native app on ios or android using a single command. This allows you to quickly run different branches without having to stop any processes or quit any programs, just run the command again on a different branch. Run in the root of your react native project.
 
 
 ## Usage: 
