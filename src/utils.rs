@@ -75,7 +75,7 @@ pub fn get_react_native_version(path: &PathBuf) -> Result<Option<String>, io::Er
 
 pub fn clean_install(react_native_version: &str) {
 
-    let command = if react_native_version.starts_with("0.74") {
+    let command = if is_version_greater_or_equal(react_native_version, "0.74") {
         "npm"
     } else if react_native_version.starts_with("0.69") {
         "yarn"
@@ -140,11 +140,11 @@ pub fn launch_sim(react_native_version: &str, args: &Args) {
     let npx_ios = format!("npm run prebuild && npx react-native run-ios --simulator=\"{}\"", args.simulator.as_ref().unwrap_or(&"iPhone 15".to_string()));
     let npx_android = "npm run prebuild && npx react-native run-android";
 
-    let command = if args.ios && react_native_version.starts_with("0.74") {
+    let command = if args.ios && is_version_greater_or_equal(react_native_version, "0.74") {
         &npx_ios
     } else if args.ios && react_native_version.starts_with("0.69") {
         yarn_ios
-    } else if args.android && react_native_version.starts_with("0.74") {
+    } else if args.android && is_version_greater_or_equal(react_native_version, "0.74") {
         npx_android
     } else if args.android && react_native_version.starts_with("0.69") {
         yarn_android
@@ -169,4 +169,35 @@ pub fn launch_sim(react_native_version: &str, args: &Args) {
         .arg(&osascript_command)
         .status()
         .expect("Failed to execute osascript command");
+}
+
+
+pub fn is_version_greater_or_equal(version: &str, target: &str) -> bool {
+    // Split version and target into components
+    let version_parts: Vec<&str> = version.split('.').collect();
+    let target_parts: Vec<&str> = target.split('.').collect();
+
+    // Compare major versions
+    if version_parts[0] > target_parts[0] {
+        return true;
+    } else if version_parts[0] < target_parts[0] {
+        return false;
+    }
+
+    // Compare minor versions if major versions are equal
+    if version_parts[1] > target_parts[1] {
+        return true;
+    } else if version_parts[1] < target_parts[1] {
+        return false;
+    }
+
+    // Compare patch versions if both major and minor are equal (optional)
+    if version_parts.len() > 2 && target_parts.len() > 2 {
+        if version_parts[2] >= target_parts[2] {
+            return true;
+        }
+    }
+
+    // If all parts are equal, the version is equal or greater
+    true
 }

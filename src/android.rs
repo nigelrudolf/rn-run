@@ -1,11 +1,6 @@
 use crate::args::Args;
 use crate::utils::{
-    kill_process, 
-    close_terminal_windows, 
-    clean_install, 
-    watch_directory,
-    launch_packager,
-    launch_sim
+    clean_install, close_terminal_windows, is_version_greater_or_equal, kill_process, launch_packager, launch_sim, watch_directory
 };
 
 pub fn run_android(args: &Args, current_dir: &str, react_native_version: &str) {
@@ -19,7 +14,7 @@ pub fn run_android(args: &Args, current_dir: &str, react_native_version: &str) {
 
     watch_directory(&current_dir);
 
-    if react_native_version.starts_with("0.74") {
+    if is_version_greater_or_equal(react_native_version, "0.74")  {
         println!("packager will be launched via npx");
     } else {
         launch_packager();
