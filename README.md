@@ -20,9 +20,6 @@ rn-run [OPTIONS]
   -V, --version                Print version
 ```
 
-## Dependencies
-This script needs the alias `ipad-mini` to work: https://github.com/nigelrudolf/useful-aliases
-
 ## Setup
 
 On MacOS you will need to set **Ask before closing** to **Never** in Terminal settings
