@@ -2,8 +2,20 @@
 
 ## Description: 
 
-Run react native app on ios or android using a single command. This allows you to quickly run different branches without having to stop any processes or quit any programs, just run the command again on a different branch. Run in the root of your react native project.
+React Native Development Automation Tool for MacOS
+rn-run is a command-line utility written in Rust that streamlines React Native development by automating the entire app launch process for both iOS and Android platforms.
 
+What It Does
+rn-run is a "one-command solution" for React Native developers that eliminates the tedious manual steps typically required to run React Native apps. Instead of manually:
+
+* Stopping existing Metro bundler processes
+* Closing simulators
+* Managing terminal windows
+* Installing dependencies
+* Starting the packager
+* Launching the simulator/emulator
+
+You simply run `rn-run --ios` or `rn-run --android` and the tool handles everything automatically.
 
 ## Usage: 
 ```
