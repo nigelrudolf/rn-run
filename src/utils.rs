@@ -1,11 +1,12 @@
-use std::{env, fs::File, io::{self, Error, Read}, path::PathBuf, process::Command};
+use std::{env, fs::File, io::Read, path::PathBuf, process::Command};
 use crate::args::Args;
+use crate::error::{AppError, Result};
 use serde::Deserialize;
 
-pub fn get_current_directory() -> Result<String, Error> {
+pub fn get_current_directory() -> Result<String> {
     let current_dir = env::current_dir()?
         .to_str()
-        .ok_or_else(|| Error::new(std::io::ErrorKind::Other, "Failed to convert current directory to string"))?
+        .ok_or(AppError::CurrentDir)?
         .to_owned();
 
     println!("Current directory: {}", current_dir);
@@ -13,18 +14,26 @@ pub fn get_current_directory() -> Result<String, Error> {
     Ok(current_dir)
 }
 
-pub fn kill_process() {
+pub fn kill_process() -> Result<()> {
     let output = Command::new("lsof")
         .arg("-i")
         .arg(":8081")
         .arg("-t")
         .output()
-        .expect("Failed to execute lsof command");
+        .map_err(|_| AppError::CommandFailed("lsof -i :8081 -t".to_string()))?;
 
-    let pids = String::from_utf8_lossy(&output.stdout)
+    let pids_result: std::result::Result<Vec<u32>, _> = String::from_utf8_lossy(&output.stdout)
         .split_whitespace()
-        .map(|pid| pid.parse::<u32>().expect("Failed to parse PID"))
-        .collect::<Vec<u32>>();
+        .map(|pid| pid.parse::<u32>())
+        .collect();
+
+    let pids = match pids_result {
+        Ok(pids) => pids,
+        Err(_) => {
+            println!("No process running on port 8081");
+            return Ok(());
+        }
+    };
 
     if pids.is_empty() {
         println!("No process running on port 8081");
@@ -33,25 +42,31 @@ pub fn kill_process() {
             Command::new("kill")
                 .arg(pid.to_string())
                 .spawn()
-                .expect("Failed to execute kill command");
+                .map_err(|_| AppError::CommandFailed(format!("kill {}", pid)))?;
         }
     }
+    
+    Ok(())
 }
 
-pub fn quit_simulator() {
+pub fn quit_simulator() -> Result<()> {
     Command::new("osascript")
         .arg("-e")
         .arg("tell application \"Simulator\" to quit")
         .status()
-        .expect("Failed to execute osascript command");
+        .map_err(|_| AppError::CommandFailed("osascript quit simulator".to_string()))?;
+    
+    Ok(())
 }
 
-pub fn close_terminal_windows() {
+pub fn close_terminal_windows() -> Result<()> {
     Command::new("osascript")
         .arg("-e")
         .arg("tell application \"Terminal\" to close (every window)")
         .status()
-        .expect("Failed to execute osascript command");
+        .map_err(|_| AppError::CommandFailed("osascript close terminal windows".to_string()))?;
+    
+    Ok(())
 }
 
 #[derive(Deserialize)]
@@ -59,7 +74,11 @@ pub struct PackageJson {
     dependencies: Option<std::collections::HashMap<String, String>>,
 }
 
-pub fn get_react_native_version(path: &PathBuf) -> Result<Option<String>, io::Error> {
+pub fn get_react_native_version(path: &PathBuf) -> Result<Option<String>> {
+    if !path.exists() {
+        return Err(AppError::ReactNativeNotFound);
+    }
+    
     let mut file = File::open(path)?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
@@ -73,7 +92,7 @@ pub fn get_react_native_version(path: &PathBuf) -> Result<Option<String>, io::Er
     Ok(version)
 }
 
-pub fn clean_install(react_native_version: &str) {
+pub fn clean_install(react_native_version: &str) -> Result<()> {
 
     let command = if is_version_greater_or_equal(react_native_version, "0.74") {
         "npm"
@@ -87,42 +106,46 @@ pub fn clean_install(react_native_version: &str) {
         .arg("-rf")
         .arg("node_modules")
         .status()
-        .expect("Failed to execute rm command");
+        .map_err(|_| AppError::CommandFailed("rm -rf node_modules".to_string()))?;
 
     Command::new(command)
         .arg("install")
         .status()
-        .expect("Failed to execute yarn command");
+        .map_err(|_| AppError::CommandFailed(format!("{} install", command)))?;
 
     Command::new("sh")
         .arg("-c")
         .arg("cd ios && pod install && cd ..")
         .status()
-        .expect("Failed to execute shell command");   
+        .map_err(|_| AppError::CommandFailed("pod install".to_string()))?;
+    
+    Ok(())
 }
 
-pub fn watch_directory(watch_dir: &str) {
+pub fn watch_directory(watch_dir: &str) -> Result<()> {
     println!("Watching directory: {}", watch_dir);
 
     Command::new("watchman")
         .arg("watch-del")
         .arg(watch_dir)
         .status()
-        .expect("Failed to execute watchman watch-del command");
+        .map_err(|_| AppError::CommandFailed("watchman watch-del".to_string()))?;
 
     Command::new("watchman")
         .arg("watch-project")
         .arg(watch_dir)
         .status()
-        .expect("Failed to execute watchman watch-project command");
+        .map_err(|_| AppError::CommandFailed("watchman watch-project".to_string()))?;
+    
+    Ok(())
 }
 
-pub fn launch_packager() {
+pub fn launch_packager() -> Result<()> {
     let current_dir = env::current_dir()
-    .expect("Failed to get current directory")
-    .to_str()
-    .expect("Failed to convert current directory to string")
-    .to_owned();
+        .map_err(|_| AppError::CurrentDir)?
+        .to_str()
+        .ok_or(AppError::CurrentDir)?
+        .to_owned();
 
     Command::new("osascript")
         .arg("-e")
@@ -130,10 +153,12 @@ pub fn launch_packager() {
             "tell application \"Terminal\" to do script \"cd {}; yarn start\"",
             current_dir))
         .status()
-        .expect("Failed to execute osascript command");
+        .map_err(|_| AppError::CommandFailed("launch packager".to_string()))?;
+    
+    Ok(())
 }
 
-pub fn launch_sim(react_native_version: &str, args: &Args) {
+pub fn launch_sim(react_native_version: &str, args: &Args) -> Result<()> {
 
     let yarn_ios = "yarn react-native run-ios";
     let yarn_android = "yarn react-native run-android";
@@ -153,9 +178,9 @@ pub fn launch_sim(react_native_version: &str, args: &Args) {
     };
 
     let current_dir = env::current_dir()
-        .expect("Failed to get current directory")
+        .map_err(|_| AppError::CurrentDir)?
         .to_str()
-        .expect("Failed to convert current directory to string")
+        .ok_or(AppError::CurrentDir)?
         .to_owned();
 
     let osascript_command = format!(
@@ -168,7 +193,9 @@ pub fn launch_sim(react_native_version: &str, args: &Args) {
         .arg("-e")
         .arg(&osascript_command)
         .status()
-        .expect("Failed to execute osascript command");
+        .map_err(|_| AppError::CommandFailed("launch simulator".to_string()))?;
+    
+    Ok(())
 }
 
 
