@@ -3,7 +3,7 @@
 ## React Native Development Automation Tool for MacOS
 rn-run is a command-line utility written in Rust that streamlines React Native development by automating the entire app launch process for both iOS and Android platforms.
 
-What It Does
+## What It Does
 rn-run is a "one-command solution" for React Native developers that eliminates the tedious manual steps typically required to run React Native apps. Instead of manually:
 
 * Stopping existing Metro bundler processes
