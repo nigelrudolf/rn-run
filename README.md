@@ -48,3 +48,12 @@ cargo install rn-run
 ```
 
 This will build and install the binary to `~/.cargo/bin/` on MacOS and add it to your PATH. 
+
+## Support the Project
+
+You can donate using Monero (XMR)
+
+**Monero Address:** 
+```
+8AGHjrStt9EWEzKao7nvZNEGUHMHjWcJeWXts4wJsaog4eiE5Az4g2UjddiMLHLF6WPrKG2XT5rhcHrqqjTeedSo1RJZhNj
+```
