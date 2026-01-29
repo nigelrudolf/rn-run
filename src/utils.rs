@@ -92,7 +92,7 @@ pub fn get_react_native_version(path: &PathBuf) -> Result<Option<String>> {
     Ok(version)
 }
 
-pub fn clean_install(react_native_version: &str) -> Result<()> {
+pub fn clean_install(react_native_version: &str, platform: &str) -> Result<()> {
 
     let command = if is_version_greater_or_equal(react_native_version, "0.74") {
         "npm"
@@ -108,17 +108,26 @@ pub fn clean_install(react_native_version: &str) -> Result<()> {
         .status()
         .map_err(|_| AppError::CommandFailed("rm -rf node_modules".to_string()))?;
 
+    Command::new("rm")
+        .arg("-rf")
+        .arg("package-lock.json")
+        .status()
+        .map_err(|_| AppError::CommandFailed("rm -rf package-lock.json".to_string()))?;
+
+
     Command::new(command)
         .arg("install")
         .status()
         .map_err(|_| AppError::CommandFailed(format!("{} install", command)))?;
 
-    Command::new("sh")
-        .arg("-c")
-        .arg("cd ios && pod install && cd ..")
-        .status()
-        .map_err(|_| AppError::CommandFailed("pod install".to_string()))?;
-    
+    if platform == "ios" {
+        Command::new("sh")
+            .arg("-c")
+            .arg("cd ios && pod install && cd ..")
+            .status()
+            .map_err(|_| AppError::CommandFailed("pod install".to_string()))?;
+    }
+
     Ok(())
 }
 
