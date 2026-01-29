@@ -144,6 +144,24 @@ pub fn clean_install(react_native_version: &str, platform: &str) -> Result<()> {
             .arg("cd ios && pod install && cd ..")
             .status()
             .map_err(|_| AppError::CommandFailed("pod install".to_string()))?;
+    } else if platform == "android" {
+        Command::new("rm")
+            .arg("-rf")
+            .arg("android/build")
+            .status()
+            .map_err(|_| AppError::CommandFailed("rm -rf android/build".to_string()))?;
+
+        Command::new("rm")
+            .arg("-rf")
+            .arg("android/app/build")
+            .status()
+            .map_err(|_| AppError::CommandFailed("rm -rf android/app/build".to_string()))?;
+
+        Command::new("rm")
+            .arg("-rf")
+            .arg("android/.gradle")
+            .status()
+            .map_err(|_| AppError::CommandFailed("rm -rf android/.gradle".to_string()))?;
     }
 
     Ok(())
