@@ -24,11 +24,24 @@ rn-run [OPTIONS]
 ```
   -i, --ios                    Run iOS
   -a, --android                Run Android
-  -s, --simulator <SIMULATOR>  
+  -s, --simulator <SIMULATOR>
   -c, --clean-install          Clean install
+  -u, --upgrade                Upgrade clean (aggressive cleanup for RN upgrades)
   -h, --help                   Print help
   -V, --version                Print version
 ```
+
+### Clean Install (`-c`)
+Performs a standard clean install:
+- Deletes `node_modules`
+- Runs `npm install` or `yarn install`
+- Runs `pod install` (iOS only)
+
+### Upgrade Clean (`-u`)
+Performs an aggressive cleanup for React Native upgrades:
+- Everything in clean install, plus:
+- **iOS:** Deletes `ios/Pods`, `ios/build`, `ios/Podfile.lock`, `package-lock.json`
+- **Android:** Deletes `android/build`, `android/app/build`, `android/.gradle`, `package-lock.json`
 
 ## Setup
 
