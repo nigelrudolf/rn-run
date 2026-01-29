@@ -19,4 +19,8 @@ pub struct Args {
     /// Clean install
     #[arg(short, long)]
     pub clean_install: bool,
+
+    /// Upgrade clean (aggressive cleanup for RN upgrades)
+    #[arg(short, long)]
+    pub upgrade: bool,
 }

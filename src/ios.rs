@@ -1,7 +1,7 @@
 use crate::args::Args;
 use crate::error::Result;
 use crate::utils::{
-    clean_install, close_terminal_windows, is_version_greater_or_equal, kill_process, launch_packager, launch_sim, quit_simulator, watch_directory
+    clean_install, close_terminal_windows, deep_clean, is_version_greater_or_equal, kill_process, launch_packager, launch_sim, quit_simulator, watch_directory
 };
 
 pub fn run_ios(args: &Args, current_dir: &str, react_native_version: &str) -> Result<()> {
@@ -10,7 +10,11 @@ pub fn run_ios(args: &Args, current_dir: &str, react_native_version: &str) -> Re
     quit_simulator()?;
     close_terminal_windows()?;
 
-    if args.clean_install {
+    if args.upgrade {
+        deep_clean("ios")?;
+    }
+
+    if args.clean_install || args.upgrade {
         clean_install(&react_native_version, "ios")?;
     }
 

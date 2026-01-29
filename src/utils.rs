@@ -108,17 +108,29 @@ pub fn clean_install(react_native_version: &str, platform: &str) -> Result<()> {
         .status()
         .map_err(|_| AppError::CommandFailed("rm -rf node_modules".to_string()))?;
 
+    Command::new(command)
+        .arg("install")
+        .status()
+        .map_err(|_| AppError::CommandFailed(format!("{} install", command)))?;
+
+    if platform == "ios" {
+        Command::new("sh")
+            .arg("-c")
+            .arg("cd ios && pod install && cd ..")
+            .status()
+            .map_err(|_| AppError::CommandFailed("pod install".to_string()))?;
+    }
+
+    Ok(())
+}
+
+pub fn deep_clean(platform: &str) -> Result<()> {
+    
     Command::new("rm")
         .arg("-rf")
         .arg("package-lock.json")
         .status()
         .map_err(|_| AppError::CommandFailed("rm -rf package-lock.json".to_string()))?;
-
-
-    Command::new(command)
-        .arg("install")
-        .status()
-        .map_err(|_| AppError::CommandFailed(format!("{} install", command)))?;
 
     if platform == "ios" {
         Command::new("rm")
@@ -138,12 +150,6 @@ pub fn clean_install(react_native_version: &str, platform: &str) -> Result<()> {
             .arg("ios/Podfile.lock")
             .status()
             .map_err(|_| AppError::CommandFailed("rm -rf ios/Podfile.lock".to_string()))?;
-
-        Command::new("sh")
-            .arg("-c")
-            .arg("cd ios && pod install && cd ..")
-            .status()
-            .map_err(|_| AppError::CommandFailed("pod install".to_string()))?;
     } else if platform == "android" {
         Command::new("rm")
             .arg("-rf")
