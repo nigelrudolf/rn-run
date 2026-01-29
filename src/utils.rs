@@ -107,11 +107,13 @@ pub fn clean_install(react_native_version: &str, platform: &str) -> Result<()> {
         .arg("node_modules")
         .status()
         .map_err(|_| AppError::CommandFailed("rm -rf node_modules".to_string()))?;
+    println!("\x1b[32m[rn-run]: node_modules deleted\x1b[0m");
 
     Command::new(command)
         .arg("install")
         .status()
         .map_err(|_| AppError::CommandFailed(format!("{} install", command)))?;
+    println!("\x1b[32m[rn-run]: {} install completed\x1b[0m", command);
 
     if platform == "ios" {
         Command::new("sh")
@@ -119,18 +121,21 @@ pub fn clean_install(react_native_version: &str, platform: &str) -> Result<()> {
             .arg("cd ios && pod install && cd ..")
             .status()
             .map_err(|_| AppError::CommandFailed("pod install".to_string()))?;
+        println!("\x1b[32m[rn-run]: pod install completed\x1b[0m");
     }
 
     Ok(())
 }
 
 pub fn deep_clean(platform: &str) -> Result<()> {
-    
+    println!("\x1b[32m[rn-run]: starting deep clean for {}\x1b[0m", platform);
+
     Command::new("rm")
         .arg("-rf")
         .arg("package-lock.json")
         .status()
         .map_err(|_| AppError::CommandFailed("rm -rf package-lock.json".to_string()))?;
+    println!("\x1b[32m[rn-run]: package-lock.json deleted\x1b[0m");
 
     if platform == "ios" {
         Command::new("rm")
@@ -138,36 +143,42 @@ pub fn deep_clean(platform: &str) -> Result<()> {
             .arg("ios/Pods")
             .status()
             .map_err(|_| AppError::CommandFailed("rm -rf ios/Pods".to_string()))?;
+        println!("\x1b[32m[rn-run]: ios/Pods deleted\x1b[0m");
 
         Command::new("rm")
             .arg("-rf")
             .arg("ios/build")
             .status()
             .map_err(|_| AppError::CommandFailed("rm -rf ios/build".to_string()))?;
+        println!("\x1b[32m[rn-run]: ios/build deleted\x1b[0m");
 
         Command::new("rm")
             .arg("-rf")
             .arg("ios/Podfile.lock")
             .status()
             .map_err(|_| AppError::CommandFailed("rm -rf ios/Podfile.lock".to_string()))?;
+        println!("\x1b[32m[rn-run]: ios/Podfile.lock deleted\x1b[0m");
     } else if platform == "android" {
         Command::new("rm")
             .arg("-rf")
             .arg("android/build")
             .status()
             .map_err(|_| AppError::CommandFailed("rm -rf android/build".to_string()))?;
+        println!("\x1b[32m[rn-run]: android/build deleted\x1b[0m");
 
         Command::new("rm")
             .arg("-rf")
             .arg("android/app/build")
             .status()
             .map_err(|_| AppError::CommandFailed("rm -rf android/app/build".to_string()))?;
+        println!("\x1b[32m[rn-run]: android/app/build deleted\x1b[0m");
 
         Command::new("rm")
             .arg("-rf")
             .arg("android/.gradle")
             .status()
             .map_err(|_| AppError::CommandFailed("rm -rf android/.gradle".to_string()))?;
+        println!("\x1b[32m[rn-run]: android/.gradle deleted\x1b[0m");
     }
 
     Ok(())
