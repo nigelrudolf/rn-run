@@ -149,7 +149,26 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 cargo install rn-run
 ```
 
-This will build and install the binary to `~/.cargo/bin/` on MacOS and add it to your PATH. 
+This will build and install the binary to `~/.cargo/bin/` on MacOS and add it to your PATH.
+
+## Releasing (Maintainers)
+
+To publish a new release:
+
+1. Update version in `Cargo.toml`
+2. Commit the version bump
+3. Run the release script:
+
+```bash
+./scripts/release.sh
+```
+
+This will:
+- Publish to crates.io
+- Create and push a git tag (vX.X.X)
+- Create a GitHub release with auto-generated notes
+
+Requires: [GitHub CLI](https://cli.github.com/) (`gh`) authenticated.
 
 ## Support the Project
 
