@@ -122,3 +122,15 @@ pub struct ScreenshotResult {
     pub path: String,
     pub message: String,
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// UPDATE RESULT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+#[derive(Serialize)]
+pub struct UpdateResultOutput {
+    pub current_version: String,
+    pub latest_version: String,
+    pub updated: bool,
+    pub message: String,
+}

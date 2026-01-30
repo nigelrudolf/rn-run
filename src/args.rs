@@ -111,6 +111,11 @@ pub struct Args {
     #[arg(long)]
     pub output: Option<String>,
 
+    /// Update rn-run to the latest version from crates.io.
+    /// Checks for newer version and runs `cargo install rn-run --force` if available.
+    #[arg(long, visible_alias = "self-update")]
+    pub update: bool,
+
     // ═══════════════════════════════════════════════════════════════════════════
     // TARGETED CLEANUP (standalone commands)
     // ═══════════════════════════════════════════════════════════════════════════

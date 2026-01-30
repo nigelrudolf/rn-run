@@ -24,6 +24,7 @@ This document provides structured guidance for AI assistants (Claude, etc.) to e
 | `rn-run --quit-simulator` | Quit iOS Simulator | Simulator frozen/stuck |
 | `rn-run --screenshot --json` | Screenshot iOS simulator | Capture current app state |
 | `rn-run --screenshot -a --json` | Screenshot Android emulator | Capture current app state |
+| `rn-run --update --json` | Update rn-run | Check for and install latest version |
 | `rn-run --clean-modules` | Delete node_modules | Dependency corruption |
 | `rn-run --clean-pods` | Clean iOS pods | Pod-related build errors |
 | `rn-run --clean-gradle` | Clean Android gradle | Gradle sync failures |
@@ -189,6 +190,21 @@ User reports build environment problems
 }
 ```
 
+### update Response
+
+```json
+{
+  "command": "update",
+  "success": true,
+  "data": {
+    "current_version": "0.1.7",
+    "latest_version": "0.1.8",
+    "updated": true,
+    "message": "Updated from v0.1.7 to v0.1.8"
+  }
+}
+```
+
 ---
 
 ## Common Error Patterns
@@ -301,6 +317,7 @@ rn-run -a -u                       # Deep clean + reinstall for Android
 - `--quit-simulator` - Quit iOS Simulator
 - `--screenshot` - Take screenshot of running simulator/emulator (iOS by default, use with `-a` for Android)
 - `--output <path>` - Specify output path for screenshot (optional, defaults to timestamped filename)
+- `--update` - Update rn-run to latest version from crates.io
 
 ### Cleanup
 - `--clean-modules` - Delete node_modules only

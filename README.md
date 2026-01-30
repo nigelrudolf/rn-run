@@ -40,6 +40,7 @@ PROCESS MANAGEMENT:
   --quit-simulator             Quit iOS Simulator
   --screenshot                 Take screenshot of running simulator/emulator
   --output <PATH>              Output path for screenshot (optional)
+  --update                     Update rn-run to latest version
 
 CLEANUP:
   --clean-modules              Delete node_modules only
@@ -98,6 +99,15 @@ rn-run --screenshot --json
 ```
 
 Screenshots are saved to the current directory with a timestamp by default, or specify a custom path with `--output`.
+
+### Self-Update
+Update rn-run to the latest version from crates.io:
+
+```bash
+rn-run --update
+```
+
+This checks crates.io for the latest version and runs `cargo install rn-run --force` if a newer version is available.
 
 ## AI/Automation Usage
 

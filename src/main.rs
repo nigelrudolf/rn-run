@@ -16,7 +16,7 @@ use ios::run_ios;
 use android::run_android;
 use utils::{get_current_directory, get_react_native_version, is_version_greater_or_equal};
 use error::{AppError, Result};
-use output::{Output, ActionResult, RnVersionResult, ScreenshotResult};
+use output::{Output, ActionResult, RnVersionResult, ScreenshotResult, UpdateResultOutput};
 use diagnostics::{check_environment, list_simulators, list_emulators};
 
 fn main() {
@@ -126,6 +126,21 @@ fn run(args: &Args) -> Result<()> {
             }).print();
         } else {
             println!("\x1b[32m[rn-run]: Screenshot saved to {}\x1b[0m", path);
+        }
+        return Ok(());
+    }
+
+    if args.update {
+        let result = utils::check_and_update()?;
+        if args.json {
+            Output::success("update", UpdateResultOutput {
+                current_version: result.current_version,
+                latest_version: result.latest_version,
+                updated: result.updated,
+                message: result.message,
+            }).print();
+        } else {
+            println!("\x1b[32m[rn-run]: {}\x1b[0m", result.message);
         }
         return Ok(());
     }

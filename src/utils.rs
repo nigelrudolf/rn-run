@@ -1,4 +1,4 @@
-use std::{env, fs::File, io::Read, path::PathBuf, process::Command};
+use std::{env, fs::File, io::Read, path::PathBuf, process::Command, process::Stdio};
 use crate::args::Args;
 use crate::error::{AppError, Result};
 use serde::Deserialize;
@@ -394,4 +394,72 @@ pub fn is_version_greater_or_equal(version: &str, target: &str) -> bool {
 
     // If all parts are equal, the version is equal or greater
     true
+}
+
+#[derive(Deserialize)]
+struct CratesIoResponse {
+    #[serde(rename = "crate")]
+    krate: CrateInfo,
+}
+
+#[derive(Deserialize)]
+struct CrateInfo {
+    max_version: String,
+}
+
+pub struct UpdateResult {
+    pub current_version: String,
+    pub latest_version: String,
+    pub updated: bool,
+    pub message: String,
+}
+
+pub fn check_and_update() -> Result<UpdateResult> {
+    let current_version = env!("CARGO_PKG_VERSION");
+
+    // Fetch latest version from crates.io
+    let output = Command::new("curl")
+        .args(["-s", "https://crates.io/api/v1/crates/rn-run"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .output()
+        .map_err(|_| AppError::CommandFailed("curl crates.io".to_string()))?;
+
+    if !output.status.success() {
+        return Err(AppError::CommandFailed("Failed to fetch version info from crates.io".to_string()));
+    }
+
+    let response: CratesIoResponse = serde_json::from_slice(&output.stdout)
+        .map_err(|_| AppError::CommandFailed("Failed to parse crates.io response".to_string()))?;
+
+    let latest_version = &response.krate.max_version;
+
+    // Compare versions
+    if is_version_greater_or_equal(current_version, latest_version) {
+        return Ok(UpdateResult {
+            current_version: current_version.to_string(),
+            latest_version: latest_version.clone(),
+            updated: false,
+            message: format!("Already up to date (v{})", current_version),
+        });
+    }
+
+    // Update to latest version
+    println!("\x1b[32m[rn-run]: Updating from v{} to v{}...\x1b[0m", current_version, latest_version);
+
+    let status = Command::new("cargo")
+        .args(["install", "rn-run", "--force"])
+        .status()
+        .map_err(|_| AppError::CommandFailed("cargo install rn-run".to_string()))?;
+
+    if !status.success() {
+        return Err(AppError::CommandFailed("cargo install rn-run failed".to_string()));
+    }
+
+    Ok(UpdateResult {
+        current_version: current_version.to_string(),
+        latest_version: latest_version.clone(),
+        updated: true,
+        message: format!("Updated from v{} to v{}", current_version, latest_version),
+    })
 }
