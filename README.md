@@ -43,6 +43,7 @@ CLEANUP:
   --clean-modules              Delete node_modules only
   --clean-pods                 Clean iOS Pods, Podfile.lock, build
   --clean-gradle               Clean Android build caches
+  --delete-simulators          Delete all iOS simulators
 
 BUILD:
   --pod-install                Run pod install
@@ -64,6 +65,19 @@ Performs an aggressive cleanup for React Native upgrades:
 - Everything in clean install, plus:
 - **iOS:** Deletes `ios/Pods`, `ios/build`, `ios/Podfile.lock`, `package-lock.json`
 - **Android:** Deletes `android/build`, `android/app/build`, `android/.gradle`, `package-lock.json`
+
+### Prebuild Script (Automatic)
+If your `package.json` contains a `"prebuild"` script, rn-run will automatically run it before building:
+
+```json
+{
+  "scripts": {
+    "prebuild": "your-prebuild-commands-here"
+  }
+}
+```
+
+When detected, rn-run runs `npm run prebuild` before the build command. No configuration needed.
 
 ## AI/Automation Usage
 
