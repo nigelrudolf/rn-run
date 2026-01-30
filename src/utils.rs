@@ -223,9 +223,9 @@ pub fn launch_packager() -> Result<()> {
 pub fn launch_sim(react_native_version: &str, args: &Args) -> Result<()> {
 
     let yarn_ios = "yarn react-native run-ios";
-    let yarn_android = "yarn react-native run-android";
+    let yarn_android = "yarn react-native run-android --active-arch-only";
     let npx_ios = format!("npm run prebuild && npx react-native run-ios --simulator=\"{}\"", args.simulator.as_ref().unwrap_or(&"iPhone 15".to_string()));
-    let npx_android = "npm run prebuild && npx react-native run-android";
+    let npx_android = "npm run prebuild && npx react-native run-android --active-arch-only";
 
     let command = if args.ios && is_version_greater_or_equal(react_native_version, "0.74") {
         &npx_ios
