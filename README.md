@@ -22,11 +22,33 @@ rn-run [OPTIONS]
 
 ## Options:
 ```
+PLATFORM:
   -i, --ios                    Run iOS
   -a, --android                Run Android
-  -s, --simulator <SIMULATOR>
-  -c, --clean-install          Clean install
-  -u, --upgrade                Upgrade clean (aggressive cleanup for RN upgrades)
+  -s, --simulator <SIMULATOR>  Specify iOS simulator (default: iPhone 15)
+  -c, --clean-install          Clean install before running
+  -u, --upgrade                Aggressive cleanup for RN upgrades
+
+DIAGNOSTICS:
+  --check-env                  Check development environment setup
+  --rn-version                 Show detected React Native version
+  --list-simulators            List available iOS simulators
+  --list-emulators             List available Android emulators
+
+PROCESS MANAGEMENT:
+  --kill-metro                 Kill Metro bundler on port 8081
+  --quit-simulator             Quit iOS Simulator
+
+CLEANUP:
+  --clean-modules              Delete node_modules only
+  --clean-pods                 Clean iOS Pods, Podfile.lock, build
+  --clean-gradle               Clean Android build caches
+
+BUILD:
+  --pod-install                Run pod install
+
+OUTPUT:
+  --json                       Output in JSON format (for AI/automation)
   -h, --help                   Print help
   -V, --version                Print version
 ```
@@ -42,6 +64,26 @@ Performs an aggressive cleanup for React Native upgrades:
 - Everything in clean install, plus:
 - **iOS:** Deletes `ios/Pods`, `ios/build`, `ios/Podfile.lock`, `package-lock.json`
 - **Android:** Deletes `android/build`, `android/app/build`, `android/.gradle`, `package-lock.json`
+
+## AI/Automation Usage
+
+rn-run is designed to work with AI assistants like Claude. Use `--json` for structured output:
+
+```bash
+# Check environment (AI can parse and diagnose issues)
+rn-run --check-env --json
+
+# Get RN version (determines npm vs yarn)
+rn-run --rn-version --json
+
+# List available simulators
+rn-run --list-simulators --json
+```
+
+See [CLAUDE.md](./CLAUDE.md) for comprehensive AI usage documentation, including:
+- Decision trees for debugging build errors
+- JSON response formats
+- Common error patterns and fixes
 
 ## Setup
 
