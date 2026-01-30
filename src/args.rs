@@ -121,6 +121,12 @@ pub struct Args {
     #[arg(long)]
     pub clean_gradle: bool,
 
+    /// Delete all iOS simulators.
+    /// Use when: simulators are corrupted, need fresh simulator setup, reclaim disk space.
+    /// WARNING: This deletes ALL simulators. You'll need to recreate them in Xcode.
+    #[arg(long)]
+    pub delete_simulators: bool,
+
     // ═══════════════════════════════════════════════════════════════════════════
     // BUILD STEPS (standalone commands)
     // ═══════════════════════════════════════════════════════════════════════════

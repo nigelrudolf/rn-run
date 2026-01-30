@@ -175,6 +175,28 @@ fn run(args: &Args) -> Result<()> {
         return Ok(());
     }
 
+    if args.delete_simulators {
+        let status = Command::new("xcrun")
+            .args(["simctl", "delete", "all"])
+            .status()
+            .map_err(|_| AppError::CommandFailed("xcrun simctl delete all".to_string()))?;
+
+        if status.success() {
+            if args.json {
+                Output::success("delete-simulators", ActionResult {
+                    action: "delete-simulators".to_string(),
+                    message: "All iOS simulators deleted. Recreate them in Xcode > Settings > Platforms.".to_string(),
+                }).print();
+            } else {
+                println!("\x1b[32m[rn-run]: All iOS simulators deleted\x1b[0m");
+                println!("Recreate simulators in Xcode > Settings > Platforms.");
+            }
+        } else {
+            return Err(AppError::CommandFailed("xcrun simctl delete all failed".to_string()));
+        }
+        return Ok(());
+    }
+
     if args.pod_install {
         let status = Command::new("sh")
             .arg("-c")
