@@ -121,6 +121,11 @@ pub struct Args {
     #[arg(long)]
     pub clean_gradle: bool,
 
+    /// Clear Metro bundler cache (temporary files in $TMPDIR).
+    /// Use when: "Unable to resolve module" errors, stale bundle, Metro cache corruption.
+    #[arg(long)]
+    pub clean_metro: bool,
+
     /// Delete all iOS simulators.
     /// Use when: simulators are corrupted, need fresh simulator setup, reclaim disk space.
     /// WARNING: This deletes ALL simulators. You'll need to recreate them in Xcode.

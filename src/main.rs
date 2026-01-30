@@ -176,6 +176,25 @@ fn run(args: &Args) -> Result<()> {
         return Ok(());
     }
 
+    if args.clean_metro {
+        let tmpdir = std::env::var("TMPDIR").unwrap_or_else(|_| "/tmp".to_string());
+        Command::new("sh")
+            .arg("-c")
+            .arg(format!("rm -rf {}metro-* {}haste-map-*", tmpdir, tmpdir))
+            .status()
+            .map_err(|_| AppError::CommandFailed("rm -rf metro cache".to_string()))?;
+
+        if args.json {
+            Output::success("clean-metro", ActionResult {
+                action: "clean-metro".to_string(),
+                message: "Metro cache cleared".to_string(),
+            }).print();
+        } else {
+            println!("\x1b[32m[rn-run]: Metro cache cleared\x1b[0m");
+        }
+        return Ok(());
+    }
+
     if args.delete_simulators {
         let status = Command::new("xcrun")
             .args(["simctl", "delete", "all"])

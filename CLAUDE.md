@@ -25,6 +25,7 @@ This document provides structured guidance for AI assistants (Claude, etc.) to e
 | `rn-run --clean-modules` | Delete node_modules | Dependency corruption |
 | `rn-run --clean-pods` | Clean iOS pods | Pod-related build errors |
 | `rn-run --clean-gradle` | Clean Android gradle | Gradle sync failures |
+| `rn-run --clean-metro` | Clear Metro cache | "Unable to resolve module" errors, stale bundle |
 | `rn-run --pod-install` | Run pod install | After cleaning pods |
 | `rn-run -i` | Run iOS app | Normal iOS development |
 | `rn-run -a` | Run Android app | Normal Android development |
@@ -50,6 +51,8 @@ iOS build error detected
 │   └── rn-run --clean-modules && npm install
 ├── Metro bundler issues (port 8081, stuck)?
 │   └── rn-run --kill-metro
+├── Error contains "Unable to resolve module" or stale bundle?
+│   └── rn-run --clean-metro
 └── Unknown error?
     └── rn-run -i -c (clean install) or rn-run -i -u (deep clean)
 ```
@@ -66,6 +69,8 @@ Android build error detected
 │   └── rn-run --clean-modules && npm install
 ├── Metro bundler issues?
 │   └── rn-run --kill-metro
+├── Error contains "Unable to resolve module" or stale bundle?
+│   └── rn-run --clean-metro
 └── Unknown error?
     └── rn-run -a -c (clean install) or rn-run -a -u (deep clean)
 ```
@@ -177,6 +182,7 @@ User reports build environment problems
 | `Unable to find a specification for` | Stale pod cache | `--clean-pods && --pod-install` |
 | `pod install` hangs or fails | Corrupted Pods | `--clean-pods && --pod-install` |
 | `No bundle URL present` | Metro not running | `--kill-metro`, then rebuild |
+| `Unable to resolve module` | Metro cache stale | `--clean-metro` |
 | `ENOSPC: no space left` | Watchman limits | `--clean-modules` |
 | `Could not resolve project :app` | Gradle cache | `--clean-gradle` |
 | `SDK location not found` | ANDROID_HOME not set | Check `--check-env` |
@@ -205,6 +211,7 @@ User reports build environment problems
    - Gradle errors → `--clean-gradle`
    - Module errors → `--clean-modules && npm install`
    - Metro stuck → `--kill-metro`
+   - Metro cache stale → `--clean-metro`
 
 5. **Escalate if needed**:
    - If targeted fix fails → `rn-run -i -c` (clean install)
@@ -281,6 +288,7 @@ rn-run -a -u                       # Deep clean + reinstall for Android
 - `--clean-modules` - Delete node_modules only
 - `--clean-pods` - Delete iOS Pods, Podfile.lock, build
 - `--clean-gradle` - Delete Android build caches
+- `--clean-metro` - Clear Metro bundler cache
 
 ### Build
 - `--pod-install` - Run pod install
