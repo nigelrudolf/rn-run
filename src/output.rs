@@ -111,3 +111,14 @@ pub struct ActionResult {
     pub action: String,
     pub message: String,
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SCREENSHOT RESULT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+#[derive(Serialize)]
+pub struct ScreenshotResult {
+    pub platform: String,
+    pub path: String,
+    pub message: String,
+}

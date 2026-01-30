@@ -38,6 +38,8 @@ DIAGNOSTICS:
 PROCESS MANAGEMENT:
   --kill-metro                 Kill Metro bundler on port 8081
   --quit-simulator             Quit iOS Simulator
+  --screenshot                 Take screenshot of running simulator/emulator
+  --output <PATH>              Output path for screenshot (optional)
 
 CLEANUP:
   --clean-modules              Delete node_modules only
@@ -79,6 +81,24 @@ If your `package.json` contains a `"prebuild"` script, rn-run will automatically
 
 When detected, rn-run runs `npm run prebuild` before the build command. No configuration needed.
 
+### Screenshot
+Capture screenshots of running simulators/emulators:
+
+```bash
+# iOS simulator (default)
+rn-run --screenshot
+rn-run --screenshot --output myapp.png
+
+# Android emulator
+rn-run --screenshot -a
+rn-run --screenshot -a --output myapp.png
+
+# JSON output for automation
+rn-run --screenshot --json
+```
+
+Screenshots are saved to the current directory with a timestamp by default, or specify a custom path with `--output`.
+
 ## AI/Automation Usage
 
 rn-run is designed to work with AI assistants like Claude. Use `--json` for structured output:
@@ -92,6 +112,9 @@ rn-run --rn-version --json
 
 # List available simulators
 rn-run --list-simulators --json
+
+# Take screenshot
+rn-run --screenshot --json
 ```
 
 See [CLAUDE.md](./CLAUDE.md) for comprehensive AI usage documentation, including:

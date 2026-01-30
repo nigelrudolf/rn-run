@@ -16,7 +16,7 @@ use ios::run_ios;
 use android::run_android;
 use utils::{get_current_directory, get_react_native_version, is_version_greater_or_equal};
 use error::{AppError, Result};
-use output::{Output, ActionResult, RnVersionResult};
+use output::{Output, ActionResult, RnVersionResult, ScreenshotResult};
 use diagnostics::{check_environment, list_simulators, list_emulators};
 
 fn main() {
@@ -106,6 +106,26 @@ fn run(args: &Args) -> Result<()> {
             }).print();
         } else {
             println!("\x1b[32m[rn-run]: iOS Simulator quit\x1b[0m");
+        }
+        return Ok(());
+    }
+
+    if args.screenshot {
+        let output_path = args.output.as_deref();
+        let (platform, path) = if args.android {
+            ("android", utils::take_android_screenshot(output_path)?)
+        } else {
+            ("ios", utils::take_ios_screenshot(output_path)?)
+        };
+
+        if args.json {
+            Output::success("screenshot", ScreenshotResult {
+                platform: platform.to_string(),
+                path: path.clone(),
+                message: format!("Screenshot saved to {}", path),
+            }).print();
+        } else {
+            println!("\x1b[32m[rn-run]: Screenshot saved to {}\x1b[0m", path);
         }
         return Ok(());
     }

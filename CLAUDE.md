@@ -22,6 +22,8 @@ This document provides structured guidance for AI assistants (Claude, etc.) to e
 | `rn-run --list-emulators --json` | List Android emulators | Verify emulator exists |
 | `rn-run --kill-metro` | Kill Metro bundler | Port 8081 in use, Metro stuck |
 | `rn-run --quit-simulator` | Quit iOS Simulator | Simulator frozen/stuck |
+| `rn-run --screenshot --json` | Screenshot iOS simulator | Capture current app state |
+| `rn-run --screenshot -a --json` | Screenshot Android emulator | Capture current app state |
 | `rn-run --clean-modules` | Delete node_modules | Dependency corruption |
 | `rn-run --clean-pods` | Clean iOS pods | Pod-related build errors |
 | `rn-run --clean-gradle` | Clean Android gradle | Gradle sync failures |
@@ -173,6 +175,20 @@ User reports build environment problems
 }
 ```
 
+### screenshot Response
+
+```json
+{
+  "command": "screenshot",
+  "success": true,
+  "data": {
+    "platform": "ios",
+    "path": "screenshot-ios-1234567890.png",
+    "message": "Screenshot saved to screenshot-ios-1234567890.png"
+  }
+}
+```
+
 ---
 
 ## Common Error Patterns
@@ -283,6 +299,8 @@ rn-run -a -u                       # Deep clean + reinstall for Android
 ### Process Management
 - `--kill-metro` - Kill Metro bundler on port 8081
 - `--quit-simulator` - Quit iOS Simulator
+- `--screenshot` - Take screenshot of running simulator/emulator (iOS by default, use with `-a` for Android)
+- `--output <path>` - Specify output path for screenshot (optional, defaults to timestamped filename)
 
 ### Cleanup
 - `--clean-modules` - Delete node_modules only

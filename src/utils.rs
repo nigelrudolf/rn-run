@@ -55,8 +55,77 @@ pub fn quit_simulator() -> Result<()> {
         .arg("tell application \"Simulator\" to quit")
         .status()
         .map_err(|_| AppError::CommandFailed("osascript quit simulator".to_string()))?;
-    
+
     Ok(())
+}
+
+pub fn take_ios_screenshot(output_path: Option<&str>) -> Result<String> {
+    let path = match output_path {
+        Some(p) => p.to_string(),
+        None => {
+            let timestamp = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+            format!("screenshot-ios-{}.png", timestamp)
+        }
+    };
+
+    let output = Command::new("xcrun")
+        .args(["simctl", "io", "booted", "screenshot", &path])
+        .output()
+        .map_err(|_| AppError::CommandFailed("xcrun simctl io booted screenshot".to_string()))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(AppError::CommandFailed(format!(
+            "Screenshot failed: {}. Is an iOS simulator running?",
+            stderr.trim()
+        )));
+    }
+
+    Ok(path)
+}
+
+pub fn take_android_screenshot(output_path: Option<&str>) -> Result<String> {
+    let path = match output_path {
+        Some(p) => p.to_string(),
+        None => {
+            let timestamp = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+            format!("screenshot-android-{}.png", timestamp)
+        }
+    };
+
+    // Use adb to capture screenshot and pull to local path
+    let output = Command::new("sh")
+        .arg("-c")
+        .arg(format!(
+            "adb exec-out screencap -p > \"{}\"",
+            path.replace("\"", "\\\"")
+        ))
+        .output()
+        .map_err(|_| AppError::CommandFailed("adb exec-out screencap".to_string()))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(AppError::CommandFailed(format!(
+            "Screenshot failed: {}. Is an Android emulator/device connected?",
+            stderr.trim()
+        )));
+    }
+
+    // Verify file was created and has content
+    let metadata = std::fs::metadata(&path);
+    if metadata.is_err() || metadata.unwrap().len() == 0 {
+        return Err(AppError::CommandFailed(
+            "Screenshot failed: No device connected or screenshot capture failed".to_string()
+        ));
+    }
+
+    Ok(path)
 }
 
 pub fn close_terminal_windows() -> Result<()> {

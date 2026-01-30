@@ -100,6 +100,17 @@ pub struct Args {
     #[arg(long)]
     pub quit_simulator: bool,
 
+    /// Take screenshot of running iOS simulator or Android emulator.
+    /// By default captures iOS simulator. Use with -a for Android.
+    /// Saves to current directory with timestamp, or use --output to specify path.
+    #[arg(long)]
+    pub screenshot: bool,
+
+    /// Output path for screenshot (used with --screenshot).
+    /// If not specified, saves to current directory with timestamp.
+    #[arg(long)]
+    pub output: Option<String>,
+
     // ═══════════════════════════════════════════════════════════════════════════
     // TARGETED CLEANUP (standalone commands)
     // ═══════════════════════════════════════════════════════════════════════════
