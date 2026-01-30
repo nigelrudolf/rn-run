@@ -72,6 +72,7 @@ pub fn close_terminal_windows() -> Result<()> {
 #[derive(Deserialize)]
 pub struct PackageJson {
     dependencies: Option<std::collections::HashMap<String, String>>,
+    scripts: Option<std::collections::HashMap<String, String>>,
 }
 
 pub fn get_react_native_version(path: &PathBuf) -> Result<Option<String>> {
@@ -90,6 +91,32 @@ pub fn get_react_native_version(path: &PathBuf) -> Result<Option<String>> {
         .and_then(|deps| deps.get("react-native").cloned());
     
     Ok(version)
+}
+
+pub fn has_prebuild_script(path: &PathBuf) -> bool {
+    if !path.exists() {
+        return false;
+    }
+
+    let mut file = match File::open(path) {
+        Ok(f) => f,
+        Err(_) => return false,
+    };
+    let mut contents = String::new();
+    if file.read_to_string(&mut contents).is_err() {
+        return false;
+    }
+
+    let package_json: PackageJson = match serde_json::from_str(&contents) {
+        Ok(p) => p,
+        Err(_) => return false,
+    };
+
+    package_json
+        .scripts
+        .as_ref()
+        .map(|s| s.contains_key("prebuild"))
+        .unwrap_or(false)
 }
 
 pub fn clean_install(react_native_version: &str, platform: &str) -> Result<()> {
@@ -222,13 +249,13 @@ pub fn launch_packager() -> Result<()> {
 
 pub fn launch_sim(react_native_version: &str, args: &Args) -> Result<()> {
 
-    let yarn_ios = "yarn react-native run-ios";
-    let yarn_android = "yarn react-native run-android --active-arch-only";
-    let npx_ios = format!("npm run prebuild && npx react-native run-ios --simulator=\"{}\"", args.simulator.as_ref().unwrap_or(&"iPhone 15".to_string()));
-    let npx_android = "npm run prebuild && npx react-native run-android --active-arch-only";
+    let yarn_ios = "yarn react-native run-ios".to_string();
+    let yarn_android = "yarn react-native run-android --active-arch-only".to_string();
+    let npx_ios = format!("npx react-native run-ios --simulator=\"{}\"", args.simulator.as_ref().unwrap_or(&"iPhone 15".to_string()));
+    let npx_android = "npx react-native run-android --active-arch-only".to_string();
 
-    let command = if args.ios && is_version_greater_or_equal(react_native_version, "0.74") {
-        &npx_ios
+    let base_command = if args.ios && is_version_greater_or_equal(react_native_version, "0.74") {
+        npx_ios
     } else if args.ios && react_native_version.starts_with("0.69") {
         yarn_ios
     } else if args.android && is_version_greater_or_equal(react_native_version, "0.74") {
@@ -236,7 +263,7 @@ pub fn launch_sim(react_native_version: &str, args: &Args) -> Result<()> {
     } else if args.android && react_native_version.starts_with("0.69") {
         yarn_android
     } else {
-        "echo \"No platform specified, use --help for more info\""
+        "echo \"No platform specified, use --help for more info\"".to_string()
     };
 
     let current_dir = env::current_dir()
@@ -244,6 +271,15 @@ pub fn launch_sim(react_native_version: &str, args: &Args) -> Result<()> {
         .to_str()
         .ok_or(AppError::CurrentDir)?
         .to_owned();
+
+    // Check for prebuild script in package.json and prepend if it exists
+    let package_json_path = PathBuf::from(&current_dir).join("package.json");
+    let command = if has_prebuild_script(&package_json_path) {
+        println!("\x1b[32m[rn-run]: Found prebuild script, running npm run prebuild first\x1b[0m");
+        format!("npm run prebuild && {}", base_command)
+    } else {
+        base_command
+    };
 
     let osascript_command = format!(
         "tell application \"Terminal\" to do script \"cd {}; {}\"",
