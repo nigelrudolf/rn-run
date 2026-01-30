@@ -58,6 +58,7 @@ fn run(args: &Args) -> Result<()> {
             }
             if result.simulators.is_empty() {
                 println!("  No simulators found. Open Xcode > Settings > Platforms to download simulators.");
+                println!("  Tip: Add a simulator named \"iPhone 15\" as it is the default for rn-run.");
             }
         }
         return Ok(());
