@@ -25,6 +25,8 @@ This document provides structured guidance for AI assistants (Claude, etc.) to e
 | `rn-run --screenshot --json` | Screenshot iOS simulator | Capture current app state |
 | `rn-run --screenshot -a --json` | Screenshot Android emulator | Capture current app state |
 | `rn-run --update --json` | Update rn-run | Check for and install latest version |
+| `rn-run --logs --json` | List build logs | View recent build logs for debugging |
+| `rn-run --show-log --json` | Show latest log | Get full content of most recent build log |
 | `rn-run --clean-modules` | Delete node_modules | Dependency corruption |
 | `rn-run --clean-pods` | Clean iOS pods | Pod-related build errors |
 | `rn-run --clean-gradle` | Clean Android gradle | Gradle sync failures |
@@ -205,6 +207,39 @@ User reports build environment problems
 }
 ```
 
+### logs Response
+
+```json
+{
+  "command": "logs",
+  "success": true,
+  "data": {
+    "log_dir": "/Users/user/.rn-run/logs",
+    "logs": [
+      {
+        "path": "/Users/user/.rn-run/logs/rn-run-ios-2024-01-30_14-30-00.log",
+        "name": "rn-run-ios-2024-01-30_14-30-00.log",
+        "size": 12345,
+        "modified": "2024-01-30 14:30:00"
+      }
+    ]
+  }
+}
+```
+
+### show-log Response
+
+```json
+{
+  "command": "show-log",
+  "success": true,
+  "data": {
+    "path": "/Users/user/.rn-run/logs/rn-run-ios-2024-01-30_14-30-00.log",
+    "content": "... full log content ..."
+  }
+}
+```
+
 ---
 
 ## Common Error Patterns
@@ -318,6 +353,8 @@ rn-run -a -u                       # Deep clean + reinstall for Android
 - `--screenshot` - Take screenshot of running simulator/emulator (iOS by default, use with `-a` for Android)
 - `--output <path>` - Specify output path for screenshot (optional, defaults to timestamped filename)
 - `--update` - Update rn-run to latest version from crates.io
+- `--logs` - List recent build logs (last 10)
+- `--show-log` - Show contents of most recent build log
 
 ### Cleanup
 - `--clean-modules` - Delete node_modules only

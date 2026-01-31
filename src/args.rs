@@ -116,6 +116,16 @@ pub struct Args {
     #[arg(long, visible_alias = "self-update")]
     pub update: bool,
 
+    /// List recent build logs.
+    /// Shows the last 10 build logs with timestamps and file sizes.
+    #[arg(long)]
+    pub logs: bool,
+
+    /// Show the most recent build log.
+    /// Outputs the contents of the latest log file.
+    #[arg(long)]
+    pub show_log: bool,
+
     // ═══════════════════════════════════════════════════════════════════════════
     // TARGETED CLEANUP (standalone commands)
     // ═══════════════════════════════════════════════════════════════════════════

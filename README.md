@@ -41,6 +41,8 @@ PROCESS MANAGEMENT:
   --screenshot                 Take screenshot of running simulator/emulator
   --output <PATH>              Output path for screenshot (optional)
   --update                     Update rn-run to latest version
+  --logs                       List recent build logs
+  --show-log                   Show the most recent build log
 
 CLEANUP:
   --clean-modules              Delete node_modules only
@@ -108,6 +110,24 @@ rn-run --update
 ```
 
 This checks crates.io for the latest version and runs `cargo install rn-run --force` if a newer version is available.
+
+### Build Logs
+Build output is automatically saved to `~/.rn-run/logs/` for debugging:
+
+```bash
+# List recent logs
+rn-run --logs
+
+# View the most recent log
+rn-run --show-log
+
+# JSON output for automation
+rn-run --logs --json
+```
+
+- Logs are created automatically when running `rn-run -i` or `rn-run -a`
+- Last 10 logs are retained (older logs are automatically deleted)
+- Log files include timestamps: `rn-run-ios-2024-01-30_14-30-00.log`
 
 ## AI/Automation Usage
 

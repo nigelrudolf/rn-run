@@ -134,3 +134,27 @@ pub struct UpdateResultOutput {
     pub updated: bool,
     pub message: String,
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LOG RESULTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+#[derive(Serialize)]
+pub struct LogListResult {
+    pub log_dir: String,
+    pub logs: Vec<LogEntryOutput>,
+}
+
+#[derive(Serialize, Clone)]
+pub struct LogEntryOutput {
+    pub path: String,
+    pub name: String,
+    pub size: u64,
+    pub modified: String,
+}
+
+#[derive(Serialize)]
+pub struct LogContentResult {
+    pub path: String,
+    pub content: String,
+}

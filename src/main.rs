@@ -9,14 +9,15 @@ mod diagnostics;
 
 use std::path::Path;
 use std::process::Command;
+use std::fs;
 
 use clap::Parser;
 use args::Args;
 use ios::run_ios;
 use android::run_android;
-use utils::{get_current_directory, get_react_native_version, is_version_greater_or_equal};
+use utils::{get_current_directory, get_react_native_version, is_version_greater_or_equal, list_logs, get_latest_log, get_log_dir, clean_log_content};
 use error::{AppError, Result};
-use output::{Output, ActionResult, RnVersionResult, ScreenshotResult, UpdateResultOutput};
+use output::{Output, ActionResult, RnVersionResult, ScreenshotResult, UpdateResultOutput, LogListResult, LogEntryOutput, LogContentResult};
 use diagnostics::{check_environment, list_simulators, list_emulators};
 
 fn main() {
@@ -141,6 +142,66 @@ fn run(args: &Args) -> Result<()> {
             }).print();
         } else {
             println!("\x1b[32m[rn-run]: {}\x1b[0m", result.message);
+        }
+        return Ok(());
+    }
+
+    if args.logs {
+        let logs = list_logs()?;
+        let log_dir = get_log_dir();
+
+        if args.json {
+            Output::success("logs", LogListResult {
+                log_dir: log_dir.to_string_lossy().to_string(),
+                logs: logs.iter().map(|l| LogEntryOutput {
+                    path: l.path.clone(),
+                    name: l.name.clone(),
+                    size: l.size,
+                    modified: l.modified.clone(),
+                }).collect(),
+            }).print();
+        } else {
+            println!("Build logs ({})", log_dir.to_string_lossy());
+            println!();
+            if logs.is_empty() {
+                println!("  No logs found. Run 'rn-run -i' or 'rn-run -a' to create logs.");
+            } else {
+                for log in &logs {
+                    println!("  {} ({} bytes) - {}", log.name, log.size, log.modified);
+                }
+                println!();
+                println!("Use 'rn-run --show-log' to view the most recent log.");
+            }
+        }
+        return Ok(());
+    }
+
+    if args.show_log {
+        match get_latest_log()? {
+            Some(log) => {
+                let raw_content = fs::read_to_string(&log.path)
+                    .map_err(|_| AppError::CommandFailed(format!("Failed to read log file: {}", log.path)))?;
+
+                // Clean up duplicate progress lines
+                let content = clean_log_content(&raw_content);
+
+                if args.json {
+                    Output::success("show-log", LogContentResult {
+                        path: log.path,
+                        content,
+                    }).print();
+                } else {
+                    println!("=== {} ===\n", log.name);
+                    println!("{}", content);
+                }
+            }
+            None => {
+                if args.json {
+                    Output::<()>::error("show-log", "No logs found", Some("Run 'rn-run -i' or 'rn-run -a' to create logs")).print();
+                } else {
+                    println!("No logs found. Run 'rn-run -i' or 'rn-run -a' to create logs.");
+                }
+            }
         }
         return Ok(());
     }

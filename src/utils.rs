@@ -1,20 +1,33 @@
-use std::{env, fs::File, io::Read, path::PathBuf, process::Command, process::Stdio};
+use std::{env, fs, fs::File, io::Read, path::PathBuf, process::Command, process::Stdio};
 use crate::args::Args;
 use crate::error::{AppError, Result};
 use serde::Deserialize;
+use chrono::Local;
 
-pub fn get_current_directory() -> Result<String> {
+const LOG_DIR: &str = ".rn-run/logs";
+const MAX_LOGS: usize = 10;
+
+pub fn get_current_directory_logged(log: Option<&LogWriter>) -> Result<String> {
     let current_dir = env::current_dir()?
         .to_str()
         .ok_or(AppError::CurrentDir)?
         .to_owned();
 
-    println!("Current directory: {}", current_dir);
+    let msg = format!("Current directory: {}", current_dir);
+    if let Some(log) = log {
+        log.log(&msg);
+    } else {
+        println!("{}", msg);
+    }
 
     Ok(current_dir)
 }
 
-pub fn kill_process() -> Result<()> {
+pub fn get_current_directory() -> Result<String> {
+    get_current_directory_logged(None)
+}
+
+pub fn kill_process_logged(log: Option<&LogWriter>) -> Result<()> {
     let output = Command::new("lsof")
         .arg("-i")
         .arg(":8081")
@@ -30,23 +43,44 @@ pub fn kill_process() -> Result<()> {
     let pids = match pids_result {
         Ok(pids) => pids,
         Err(_) => {
-            println!("No process running on port 8081");
+            let msg = "No process running on port 8081";
+            if let Some(log) = log {
+                log.log(msg);
+            } else {
+                println!("{}", msg);
+            }
             return Ok(());
         }
     };
 
     if pids.is_empty() {
-        println!("No process running on port 8081");
+        let msg = "No process running on port 8081";
+        if let Some(log) = log {
+            log.log(msg);
+        } else {
+            println!("{}", msg);
+        }
     } else {
+        let count = pids.len();
         for pid in pids {
             Command::new("kill")
                 .arg(pid.to_string())
                 .spawn()
                 .map_err(|_| AppError::CommandFailed(format!("kill {}", pid)))?;
         }
+        let msg = format!("Killed {} Metro process(es) on port 8081", count);
+        if let Some(log) = log {
+            log.log(&msg);
+        } else {
+            println!("{}", msg);
+        }
     }
-    
+
     Ok(())
+}
+
+pub fn kill_process() -> Result<()> {
+    kill_process_logged(None)
 }
 
 pub fn quit_simulator() -> Result<()> {
@@ -280,22 +314,43 @@ pub fn deep_clean(platform: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn watch_directory(watch_dir: &str) -> Result<()> {
-    println!("Watching directory: {}", watch_dir);
+pub fn watch_directory_logged(watch_dir: &str, log: Option<&LogWriter>) -> Result<()> {
+    let msg = format!("Watching directory: {}", watch_dir);
+    if let Some(log) = log {
+        log.log(&msg);
+    } else {
+        println!("{}", msg);
+    }
 
-    Command::new("watchman")
+    let output1 = Command::new("watchman")
         .arg("watch-del")
         .arg(watch_dir)
-        .status()
+        .output()
         .map_err(|_| AppError::CommandFailed("watchman watch-del".to_string()))?;
 
-    Command::new("watchman")
+    if let Some(log) = log {
+        log.log_command_output(&output1);
+    } else {
+        print!("{}", String::from_utf8_lossy(&output1.stdout));
+    }
+
+    let output2 = Command::new("watchman")
         .arg("watch-project")
         .arg(watch_dir)
-        .status()
+        .output()
         .map_err(|_| AppError::CommandFailed("watchman watch-project".to_string()))?;
-    
+
+    if let Some(log) = log {
+        log.log_command_output(&output2);
+    } else {
+        print!("{}", String::from_utf8_lossy(&output2.stdout));
+    }
+
     Ok(())
+}
+
+pub fn watch_directory(watch_dir: &str) -> Result<()> {
+    watch_directory_logged(watch_dir, None)
 }
 
 pub fn launch_packager() -> Result<()> {
@@ -316,7 +371,8 @@ pub fn launch_packager() -> Result<()> {
     Ok(())
 }
 
-pub fn launch_sim(react_native_version: &str, args: &Args) -> Result<()> {
+pub fn launch_sim(react_native_version: &str, args: &Args, log_writer: &LogWriter) -> Result<String> {
+    let log_path = &log_writer.path;
 
     let yarn_ios = "yarn react-native run-ios".to_string();
     let yarn_android = "yarn react-native run-android --active-arch-only".to_string();
@@ -343,26 +399,37 @@ pub fn launch_sim(react_native_version: &str, args: &Args) -> Result<()> {
 
     // Check for prebuild script in package.json and prepend if it exists
     let package_json_path = PathBuf::from(&current_dir).join("package.json");
-    let command = if has_prebuild_script(&package_json_path) {
-        println!("\x1b[32m[rn-run]: Found prebuild script, running npm run prebuild first\x1b[0m");
+    let build_command = if has_prebuild_script(&package_json_path) {
+        log_writer.log_green("[rn-run]: Found prebuild script, running npm run prebuild first");
         format!("npm run prebuild && {}", base_command)
     } else {
         base_command
     };
 
+    log_writer.log_green(&format!("[rn-run]: Logging to {}", log_path));
+
+    // Use 'script' to capture output while preserving full TTY behavior (colors, animations, spinners)
+    // script -q = quiet, -a = append to existing log file
+    let escaped_build_cmd = build_command.replace("'", "'\"'\"'");
+    let script_command = format!(
+        "script -q -a '{}' bash -c '{}'",
+        log_path.replace("'", "'\"'\"'"),
+        escaped_build_cmd
+    );
+
     let osascript_command = format!(
         "tell application \"Terminal\" to do script \"cd {}; {}\"",
         current_dir,
-        command.replace("\"", "\\\"")
+        script_command.replace("\"", "\\\"")
     );
-  
+
     Command::new("osascript")
         .arg("-e")
         .arg(&osascript_command)
         .status()
         .map_err(|_| AppError::CommandFailed("launch simulator".to_string()))?;
-    
-    Ok(())
+
+    Ok(log_path.clone())
 }
 
 
@@ -462,4 +529,247 @@ pub fn check_and_update() -> Result<UpdateResult> {
         updated: true,
         message: format!("Updated from v{} to v{}", current_version, latest_version),
     })
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LOGGING FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+pub fn get_log_dir() -> PathBuf {
+    let home = env::var("HOME").unwrap_or_else(|_| ".".to_string());
+    PathBuf::from(home).join(LOG_DIR)
+}
+
+pub fn ensure_log_dir() -> Result<PathBuf> {
+    let log_dir = get_log_dir();
+    if !log_dir.exists() {
+        fs::create_dir_all(&log_dir)
+            .map_err(|_| AppError::CommandFailed("Failed to create log directory".to_string()))?;
+    }
+    Ok(log_dir)
+}
+
+pub fn create_log_path(platform: &str) -> Result<String> {
+    let log_dir = ensure_log_dir()?;
+    let timestamp = Local::now().format("%Y-%m-%d_%H-%M-%S");
+    let log_file = log_dir.join(format!("rn-run-{}-{}.log", platform, timestamp));
+    Ok(log_file.to_string_lossy().to_string())
+}
+
+pub fn rotate_logs() -> Result<()> {
+    let log_dir = get_log_dir();
+    if !log_dir.exists() {
+        return Ok(());
+    }
+
+    let mut logs: Vec<_> = fs::read_dir(&log_dir)
+        .map_err(|_| AppError::CommandFailed("Failed to read log directory".to_string()))?
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| {
+            entry.path().extension().map(|e| e == "log").unwrap_or(false)
+        })
+        .collect();
+
+    // Sort by modification time (newest first)
+    logs.sort_by(|a, b| {
+        let a_time = a.metadata().and_then(|m| m.modified()).ok();
+        let b_time = b.metadata().and_then(|m| m.modified()).ok();
+        b_time.cmp(&a_time)
+    });
+
+    // Delete logs beyond MAX_LOGS
+    for log in logs.iter().skip(MAX_LOGS) {
+        let _ = fs::remove_file(log.path());
+    }
+
+    Ok(())
+}
+
+#[derive(Clone)]
+pub struct LogEntry {
+    pub path: String,
+    pub name: String,
+    pub size: u64,
+    pub modified: String,
+}
+
+pub fn list_logs() -> Result<Vec<LogEntry>> {
+    let log_dir = get_log_dir();
+    if !log_dir.exists() {
+        return Ok(Vec::new());
+    }
+
+    let mut logs: Vec<_> = fs::read_dir(&log_dir)
+        .map_err(|_| AppError::CommandFailed("Failed to read log directory".to_string()))?
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| {
+            entry.path().extension().map(|e| e == "log").unwrap_or(false)
+        })
+        .collect();
+
+    // Sort by modification time (newest first)
+    logs.sort_by(|a, b| {
+        let a_time = a.metadata().and_then(|m| m.modified()).ok();
+        let b_time = b.metadata().and_then(|m| m.modified()).ok();
+        b_time.cmp(&a_time)
+    });
+
+    let entries: Vec<LogEntry> = logs
+        .iter()
+        .filter_map(|entry| {
+            let path = entry.path();
+            let metadata = entry.metadata().ok()?;
+            let modified = metadata.modified().ok()?;
+            let datetime: chrono::DateTime<Local> = modified.into();
+
+            Some(LogEntry {
+                path: path.to_string_lossy().to_string(),
+                name: path.file_name()?.to_string_lossy().to_string(),
+                size: metadata.len(),
+                modified: datetime.format("%Y-%m-%d %H:%M:%S").to_string(),
+            })
+        })
+        .collect();
+
+    Ok(entries)
+}
+
+pub fn get_latest_log() -> Result<Option<LogEntry>> {
+    let logs = list_logs()?;
+    Ok(logs.into_iter().next())
+}
+
+/// Strip ANSI escape codes from text
+fn strip_ansi_codes(text: &str) -> String {
+    let mut result = String::new();
+    let mut chars = text.chars().peekable();
+
+    while let Some(c) = chars.next() {
+        if c == '\x1b' {
+            // Skip escape sequence
+            if chars.peek() == Some(&'[') {
+                chars.next(); // consume '['
+                // Skip until we hit a letter (end of escape sequence)
+                while let Some(&next) = chars.peek() {
+                    chars.next();
+                    if next.is_ascii_alphabetic() {
+                        break;
+                    }
+                }
+            }
+        } else if c == '\r' {
+            // Skip carriage returns (used for progress animations)
+            continue;
+        } else {
+            result.push(c);
+        }
+    }
+
+    result
+}
+
+/// Clean up log content by:
+/// 1. Stripping ANSI escape codes (colors, cursor movement)
+/// 2. Deduplicating progress spinner lines (- Building..., etc.)
+pub fn clean_log_content(content: &str) -> String {
+    use std::collections::HashSet;
+
+    // First strip ANSI codes
+    let clean = strip_ansi_codes(content);
+
+    let mut seen_progress: HashSet<String> = HashSet::new();
+    let mut result = Vec::new();
+
+    for line in clean.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+
+        // Check if this is a progress spinner line (starts with "- " and ends with dots)
+        if trimmed.starts_with("- ") && trimmed.ends_with('.') {
+            // Extract the base message without trailing dots
+            let base = trimmed.trim_end_matches('.');
+            if !seen_progress.contains(base) {
+                seen_progress.insert(base.to_string());
+                result.push(format!("{}...", base));
+            }
+            // Skip duplicate progress lines
+        } else {
+            result.push(trimmed.to_string());
+        }
+    }
+
+    result.join("\n")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LOG WRITER - writes to both console and log file
+// ═══════════════════════════════════════════════════════════════════════════════
+
+use std::io::Write;
+use std::fs::OpenOptions;
+
+pub struct LogWriter {
+    pub path: String,
+}
+
+impl LogWriter {
+    pub fn new(platform: &str) -> Result<Self> {
+        rotate_logs()?;
+        let path = create_log_path(platform)?;
+
+        // Create the log file with a header
+        let mut file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(&path)
+            .map_err(|_| AppError::CommandFailed("Failed to create log file".to_string()))?;
+
+        let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S");
+        writeln!(file, "=== rn-run {} build log ===", platform).ok();
+        writeln!(file, "Started: {}", timestamp).ok();
+        writeln!(file, "").ok();
+
+        Ok(LogWriter { path })
+    }
+
+    pub fn log(&self, message: &str) {
+        // Print to console
+        println!("{}", message);
+
+        // Append to log file
+        if let Ok(mut file) = OpenOptions::new().append(true).open(&self.path) {
+            writeln!(file, "{}", message).ok();
+        }
+    }
+
+    pub fn log_green(&self, message: &str) {
+        // Print to console with green color
+        println!("\x1b[32m{}\x1b[0m", message);
+
+        // Append to log file (without color codes)
+        if let Ok(mut file) = OpenOptions::new().append(true).open(&self.path) {
+            writeln!(file, "{}", message).ok();
+        }
+    }
+
+    pub fn log_command_output(&self, output: &std::process::Output) {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        if !stdout.is_empty() {
+            print!("{}", stdout);
+            if let Ok(mut file) = OpenOptions::new().append(true).open(&self.path) {
+                write!(file, "{}", stdout).ok();
+            }
+        }
+        if !stderr.is_empty() {
+            eprint!("{}", stderr);
+            if let Ok(mut file) = OpenOptions::new().append(true).open(&self.path) {
+                write!(file, "{}", stderr).ok();
+            }
+        }
+    }
 }

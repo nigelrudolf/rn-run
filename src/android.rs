@@ -1,12 +1,16 @@
 use crate::args::Args;
 use crate::error::Result;
 use crate::utils::{
-    clean_install, close_terminal_windows, deep_clean, is_version_greater_or_equal, kill_process, launch_packager, launch_sim, watch_directory
+    clean_install, close_terminal_windows, deep_clean, is_version_greater_or_equal,
+    kill_process_logged, launch_packager, launch_sim, watch_directory_logged,
+    LogWriter,
 };
 
-pub fn run_android(args: &Args, current_dir: &str, react_native_version: &str) -> Result<()> {
+pub fn run_android(args: &Args, _current_dir: &str, react_native_version: &str) -> Result<()> {
+    // Create log writer at the start to capture all output
+    let log = LogWriter::new("android")?;
 
-    kill_process()?;
+    kill_process_logged(Some(&log))?;
     close_terminal_windows()?;
 
     if args.upgrade {
@@ -17,15 +21,21 @@ pub fn run_android(args: &Args, current_dir: &str, react_native_version: &str) -
         clean_install(&react_native_version, "android")?;
     }
 
-    watch_directory(&current_dir)?;
+    // Get current directory for watchman
+    let current_dir = std::env::current_dir()
+        .map_err(|_| crate::error::AppError::CurrentDir)?
+        .to_string_lossy()
+        .to_string();
 
-    if is_version_greater_or_equal(react_native_version, "0.74")  {
-        println!("packager will be launched via npx");
+    watch_directory_logged(&current_dir, Some(&log))?;
+
+    if is_version_greater_or_equal(react_native_version, "0.74") {
+        log.log("packager will be launched via npx");
     } else {
         launch_packager()?;
     }
 
-    launch_sim(&react_native_version, args)?;
-    
+    let _log_path = launch_sim(&react_native_version, args, &log)?;
+
     Ok(())
 }
