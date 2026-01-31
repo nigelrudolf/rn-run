@@ -11,159 +11,115 @@ pub struct Args {
     // PLATFORM SELECTION
     // ═══════════════════════════════════════════════════════════════════════════
 
-    /// Run iOS app on simulator.
-    /// Kills Metro, quits simulator, optionally cleans, then builds and launches.
-    /// Exit codes: 0 = success, 1 = error (check stderr or --json output)
-    #[arg(short, long)]
+    /// Run iOS app on simulator
+    #[arg(short, long, help_heading = "Platform")]
     pub ios: bool,
 
-    /// Run Android app on emulator.
-    /// Kills Metro, optionally cleans, then builds and launches.
-    /// Exit codes: 0 = success, 1 = error (check stderr or --json output)
-    #[arg(short, long)]
+    /// Run Android app on emulator
+    #[arg(short, long, help_heading = "Platform")]
     pub android: bool,
 
-    /// Specify iOS simulator name (default: "iPhone 15").
-    /// Use --list-simulators to see available options.
-    #[arg(short, long)]
+    /// iOS simulator name (default: "iPhone 15")
+    #[arg(short, long, help_heading = "Platform")]
     pub simulator: Option<String>,
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // CLEANUP OPTIONS (use with -i or -a)
+    // BUILD OPTIONS
     // ═══════════════════════════════════════════════════════════════════════════
 
-    /// Clean install before running.
-    /// Deletes node_modules, runs npm/yarn install, runs pod install (iOS).
-    /// Use when: dependency issues, node_modules corruption, new team member setup.
-    #[arg(short, long)]
+    /// Clean install: delete node_modules, reinstall, pod install
+    #[arg(short, long, help_heading = "Build Options")]
     pub clean_install: bool,
 
-    /// Aggressive cleanup for React Native version upgrades.
-    /// Removes: node_modules, package-lock.json, ios/Pods, ios/build,
-    /// ios/Podfile.lock (iOS) or android/build, android/app/build,
-    /// android/.gradle (Android). Then reinstalls everything.
-    /// Use when: upgrading RN version, major dependency changes, persistent build errors.
-    #[arg(short, long)]
+    /// Deep clean for RN upgrades (removes all caches and locks)
+    #[arg(short, long, help_heading = "Build Options")]
     pub upgrade: bool,
 
     // ═══════════════════════════════════════════════════════════════════════════
     // OUTPUT FORMAT
     // ═══════════════════════════════════════════════════════════════════════════
 
-    /// Output results in JSON format for programmatic parsing.
-    /// All commands support this flag. Errors include structured diagnostics.
-    /// Recommended for AI/automation usage.
-    #[arg(long)]
+    /// Output in JSON format (for AI/automation)
+    #[arg(long, help_heading = "Output")]
     pub json: bool,
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // DIAGNOSTICS (standalone commands)
+    // DIAGNOSTICS
     // ═══════════════════════════════════════════════════════════════════════════
 
-    /// Check development environment setup.
-    /// Verifies: Xcode, Android SDK, node, npm/yarn, CocoaPods, watchman, Ruby.
-    /// Returns detailed status of each tool with version info.
-    /// Use when: build fails with "command not found" or environment errors.
-    #[arg(long)]
+    /// Check development environment setup
+    #[arg(long, help_heading = "Diagnostics")]
     pub check_env: bool,
 
-    /// Show detected React Native version from package.json.
-    /// Returns: version string, package manager recommendation (npm vs yarn).
-    /// Use when: need to verify RN version before running commands.
-    #[arg(long)]
+    /// Show React Native version from package.json
+    #[arg(long, help_heading = "Diagnostics")]
     pub rn_version: bool,
 
-    /// List available iOS simulators.
-    /// Returns: array of simulator names and their states (booted/shutdown).
-    /// Use when: need to find valid --simulator value.
-    #[arg(long)]
+    /// List available iOS simulators
+    #[arg(long, help_heading = "Diagnostics")]
     pub list_simulators: bool,
 
-    /// List available Android emulators.
-    /// Returns: array of emulator names.
-    /// Use when: need to verify Android emulator availability.
-    #[arg(long)]
+    /// List available Android emulators
+    #[arg(long, help_heading = "Diagnostics")]
     pub list_emulators: bool,
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // PROCESS MANAGEMENT (standalone commands)
+    // PROCESS MANAGEMENT
     // ═══════════════════════════════════════════════════════════════════════════
 
-    /// Kill Metro bundler process on port 8081.
-    /// Use when: Metro is stuck, port already in use, need fresh Metro start.
-    /// Safe to run even if no Metro is running.
-    #[arg(long)]
+    /// Kill Metro bundler on port 8081
+    #[arg(long, help_heading = "Process Management")]
     pub kill_metro: bool,
 
-    /// Quit iOS Simulator application.
-    /// Use when: simulator is stuck, need to reset simulator state.
-    #[arg(long)]
+    /// Quit iOS Simulator app
+    #[arg(long, help_heading = "Process Management")]
     pub quit_simulator: bool,
 
-    /// Take screenshot of running iOS simulator or Android emulator.
-    /// By default captures iOS simulator. Use with -a for Android.
-    /// Saves to current directory with timestamp, or use --output to specify path.
-    #[arg(long)]
+    /// Take screenshot of simulator/emulator
+    #[arg(long, help_heading = "Process Management")]
     pub screenshot: bool,
 
-    /// Output path for screenshot (used with --screenshot).
-    /// If not specified, saves to current directory with timestamp.
-    #[arg(long)]
+    /// Output path for screenshot
+    #[arg(long, help_heading = "Process Management")]
     pub output: Option<String>,
 
-    /// Update rn-run to the latest version from crates.io.
-    /// Checks for newer version and runs `cargo install rn-run --force` if available.
-    #[arg(long, visible_alias = "self-update")]
+    /// Update rn-run to latest version
+    #[arg(long, visible_alias = "self-update", help_heading = "Process Management")]
     pub update: bool,
 
-    /// List recent build logs.
-    /// Shows the last 10 build logs with timestamps and file sizes.
-    #[arg(long)]
+    /// List recent build logs
+    #[arg(long, help_heading = "Process Management")]
     pub logs: bool,
 
-    /// Show the most recent build log.
-    /// Outputs the contents of the latest log file.
-    #[arg(long)]
+    /// Show most recent build log
+    #[arg(long, help_heading = "Process Management")]
     pub show_log: bool,
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // TARGETED CLEANUP (standalone commands)
+    // CLEANUP
     // ═══════════════════════════════════════════════════════════════════════════
 
-    /// Delete node_modules directory only.
-    /// Does NOT reinstall. Run npm/yarn install manually after.
-    /// Use when: need to clear node_modules without full clean install.
-    #[arg(long)]
+    /// Delete node_modules only
+    #[arg(long, help_heading = "Cleanup")]
     pub clean_modules: bool,
 
-    /// Clean iOS Pods: removes ios/Pods, ios/Podfile.lock, ios/build.
-    /// Does NOT reinstall. Run --pod-install manually after.
-    /// Use when: pod-related build errors, native dependency issues.
-    #[arg(long)]
+    /// Clean iOS Pods, Podfile.lock, build
+    #[arg(long, help_heading = "Cleanup")]
     pub clean_pods: bool,
 
-    /// Clean Android Gradle: removes android/build, android/app/build, android/.gradle.
-    /// Use when: gradle sync failures, Android build cache corruption.
-    #[arg(long)]
+    /// Clean Android Gradle caches
+    #[arg(long, help_heading = "Cleanup")]
     pub clean_gradle: bool,
 
-    /// Clear Metro bundler cache (temporary files in $TMPDIR).
-    /// Use when: "Unable to resolve module" errors, stale bundle, Metro cache corruption.
-    #[arg(long)]
+    /// Clear Metro bundler cache
+    #[arg(long, help_heading = "Cleanup")]
     pub clean_metro: bool,
 
-    /// Delete all iOS simulators.
-    /// Use when: simulators are corrupted, need fresh simulator setup, reclaim disk space.
-    /// WARNING: This deletes ALL simulators. You'll need to recreate them in Xcode.
-    #[arg(long)]
+    /// Delete ALL iOS simulators (use with caution)
+    #[arg(long, help_heading = "Cleanup")]
     pub delete_simulators: bool,
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // BUILD STEPS (standalone commands)
-    // ═══════════════════════════════════════════════════════════════════════════
-
-    /// Run pod install in ios/ directory.
-    /// Use when: added new native iOS dependency, after cleaning pods.
-    #[arg(long)]
+    /// Run pod install in ios/ directory
+    #[arg(long, help_heading = "Cleanup")]
     pub pod_install: bool,
 }
