@@ -313,6 +313,71 @@ fn run(args: &Args) -> Result<()> {
         return Ok(());
     }
 
+    if args.delete_emulators {
+        let emulators = list_emulators();
+        if emulators.emulators.is_empty() {
+            if args.json {
+                Output::success("delete-emulators", ActionResult {
+                    action: "delete-emulators".to_string(),
+                    message: "No Android emulators to delete.".to_string(),
+                }).print();
+            } else {
+                println!("\x1b[32m[rn-run]: No Android emulators to delete\x1b[0m");
+            }
+        } else {
+            // Get the AVD directory path (~/.android/avd/)
+            let home = std::env::var("HOME").unwrap_or_default();
+            let avd_dir = format!("{}/.android/avd", home);
+
+            let mut deleted = Vec::new();
+            let mut failed = Vec::new();
+
+            for name in &emulators.emulators {
+                let avd_folder = format!("{}/{}.avd", avd_dir, name);
+                let avd_ini = format!("{}/{}.ini", avd_dir, name);
+
+                // Delete the .avd directory
+                let dir_result = Command::new("rm")
+                    .args(["-rf", &avd_folder])
+                    .status();
+
+                // Delete the .ini file
+                let ini_result = Command::new("rm")
+                    .args(["-f", &avd_ini])
+                    .status();
+
+                match (dir_result, ini_result) {
+                    (Ok(d), Ok(i)) if d.success() && i.success() => deleted.push(name.clone()),
+                    _ => failed.push(name.clone()),
+                }
+            }
+
+            if !failed.is_empty() {
+                return Err(AppError::CommandFailed(format!(
+                    "Failed to delete emulators: {}",
+                    failed.join(", ")
+                )));
+            }
+
+            if args.json {
+                Output::success("delete-emulators", ActionResult {
+                    action: "delete-emulators".to_string(),
+                    message: format!(
+                        "Deleted {} Android emulator(s): {}. Recreate them in Android Studio > Device Manager.",
+                        deleted.len(),
+                        deleted.join(", ")
+                    ),
+                }).print();
+            } else {
+                for name in &deleted {
+                    println!("\x1b[32m[rn-run]: Deleted emulator: {}\x1b[0m", name);
+                }
+                println!("Recreate emulators in Android Studio > Device Manager.");
+            }
+        }
+        return Ok(());
+    }
+
     if args.pod_install {
         let status = Command::new("sh")
             .arg("-c")

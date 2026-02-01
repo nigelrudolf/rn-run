@@ -31,6 +31,7 @@ This document provides structured guidance for AI assistants (Claude, etc.) to e
 | `rn-run --clean-pods` | Clean iOS pods | Pod-related build errors |
 | `rn-run --clean-gradle` | Clean Android gradle | Gradle sync failures |
 | `rn-run --clean-metro` | Clear Metro cache | "Unable to resolve module" errors, stale bundle |
+| `rn-run --delete-emulators` | Delete ALL Android emulators | Reset Android dev environment |
 | `rn-run --pod-install` | Run pod install | After cleaning pods |
 | `rn-run -i` | Run iOS app | Normal iOS development |
 | `rn-run -a` | Run Android app | Normal Android development |

@@ -382,7 +382,14 @@ pub fn list_emulators() -> EmulatorListResult {
         Ok(out) if out.status.success() => {
             let emulators: Vec<String> = String::from_utf8_lossy(&out.stdout)
                 .lines()
-                .filter(|line| !line.trim().is_empty())
+                .filter(|line| {
+                    let trimmed = line.trim();
+                    !trimmed.is_empty() &&
+                    !trimmed.starts_with("INFO") &&
+                    !trimmed.starts_with("WARNING") &&
+                    !trimmed.starts_with("ERROR") &&
+                    !trimmed.contains('|')
+                })
                 .map(|s| s.to_string())
                 .collect();
             EmulatorListResult { emulators }

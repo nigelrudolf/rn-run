@@ -119,6 +119,10 @@ pub struct Args {
     #[arg(long, help_heading = "Cleanup")]
     pub delete_simulators: bool,
 
+    /// Delete ALL Android emulators (use with caution)
+    #[arg(long, help_heading = "Cleanup")]
+    pub delete_emulators: bool,
+
     /// Run pod install in ios/ directory
     #[arg(long, help_heading = "Cleanup")]
     pub pod_install: bool,
