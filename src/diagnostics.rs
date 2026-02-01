@@ -39,6 +39,9 @@ pub fn check_environment() -> EnvCheckResult {
     // Bundler (iOS - for Gemfile management)
     checks.push(check_bundler());
 
+    // Swift (iOS)
+    checks.push(check_swift());
+
     // Android SDK
     checks.push(check_android_sdk());
 
@@ -50,6 +53,15 @@ pub fn check_environment() -> EnvCheckResult {
 
     // Android Gradle Plugin (Android)
     checks.push(check_android_gradle_plugin());
+
+    // Kotlin (Android)
+    checks.push(check_kotlin());
+
+    // Android NDK (Android)
+    checks.push(check_ndk());
+
+    // Android Build Tools (Android)
+    checks.push(check_build_tools());
 
     // Calculate overall status
     for check in &checks {
@@ -390,6 +402,40 @@ fn check_bundler() -> EnvCheck {
     }
 }
 
+fn check_swift() -> EnvCheck {
+    match get_command_version("swift", &["--version"]) {
+        Some(version) => {
+            // Extract just the Swift version from output like "swift-driver version: 1.87.1 Apple Swift version 5.9.2..."
+            let swift_version = version.lines()
+                .find(|line| line.contains("Swift version"))
+                .map(|line| {
+                    line.split("Swift version")
+                        .nth(1)
+                        .map(|s| format!("Swift{}", s.split('(').next().unwrap_or("").trim()))
+                        .unwrap_or_else(|| version.clone())
+                })
+                .unwrap_or(version);
+
+            EnvCheck {
+                name: "swift".to_string(),
+                ok: true,
+                version: Some(swift_version),
+                error: None,
+                fix: None,
+                required_for: vec![], // Optional, for Swift-based native modules
+            }
+        },
+        None => EnvCheck {
+            name: "swift".to_string(),
+            ok: false,
+            version: None,
+            error: Some("Swift not found (optional, for Swift-based modules)".to_string()),
+            fix: Some("Swift comes with Xcode. Install Xcode from the App Store.".to_string()),
+            required_for: vec![],
+        },
+    }
+}
+
 fn check_gradle() -> EnvCheck {
     // Check if we're in a React Native project with android directory
     let has_android_dir = std::path::Path::new("android").exists();
@@ -451,66 +497,369 @@ fn check_android_gradle_plugin() -> EnvCheck {
     // Check if we're in a React Native project with android directory
     let has_android_dir = std::path::Path::new("android").exists();
 
-    // Read android/build.gradle to find the AGP version
-    let build_gradle = std::fs::read_to_string("android/build.gradle");
+    // Try multiple sources for AGP version (newer RN projects use different locations)
+    let version = find_agp_version();
 
-    match build_gradle {
-        Ok(content) => {
-            // Look for patterns like:
-            // classpath("com.android.tools.build:gradle:8.0.0")
-            // classpath "com.android.tools.build:gradle:8.0.0"
-            // id 'com.android.application' version '8.0.0'
-            let version = content.lines()
-                .find(|line| line.contains("com.android.tools.build:gradle:") ||
-                            (line.contains("com.android.application") && line.contains("version")))
-                .and_then(|line| {
-                    if line.contains("com.android.tools.build:gradle:") {
-                        // Extract version from classpath declaration
-                        line.split("gradle:")
-                            .nth(1)
-                            .and_then(|s| s.split(|c| c == '"' || c == '\'').next())
-                            .map(|s| s.to_string())
-                    } else {
-                        // Extract version from plugin DSL
-                        line.split("version")
-                            .nth(1)
-                            .and_then(|s| {
-                                s.trim()
-                                    .trim_start_matches(|c| c == ' ' || c == '=' || c == '"' || c == '\'')
-                                    .split(|c| c == '"' || c == '\'')
-                                    .next()
-                            })
-                            .map(|s| s.to_string())
+    match version {
+        Some(v) => EnvCheck {
+            name: "agp".to_string(),
+            ok: true,
+            version: Some(format!("Android Gradle Plugin {}", v)),
+            error: None,
+            fix: None,
+            required_for: vec!["android".to_string()],
+        },
+        None => {
+            if has_android_dir {
+                EnvCheck {
+                    name: "agp".to_string(),
+                    ok: true,
+                    version: Some("Could not parse AGP version".to_string()),
+                    error: None,
+                    fix: None,
+                    required_for: vec!["android".to_string()],
+                }
+            } else {
+                EnvCheck {
+                    name: "agp".to_string(),
+                    ok: false,
+                    version: None,
+                    error: Some("android/ not found (run from RN project directory)".to_string()),
+                    fix: Some("Run this command from your React Native project directory.".to_string()),
+                    required_for: vec![],
+                }
+            }
+        }
+    }
+}
+
+fn find_agp_version() -> Option<String> {
+    // 1. Check gradle/libs.versions.toml (version catalog - newest approach)
+    if let Ok(content) = std::fs::read_to_string("android/gradle/libs.versions.toml") {
+        // Look for: agp = "8.5.0" or androidGradlePlugin = "8.5.0"
+        for line in content.lines() {
+            let trimmed = line.trim();
+            if (trimmed.starts_with("agp") || trimmed.starts_with("androidGradlePlugin"))
+                && trimmed.contains('=') {
+                if let Some(version) = extract_quoted_version(trimmed) {
+                    return Some(version);
+                }
+            }
+        }
+    }
+
+    // 2. Check android/settings.gradle for plugin DSL
+    if let Ok(content) = std::fs::read_to_string("android/settings.gradle") {
+        if let Some(v) = parse_agp_from_gradle(&content) {
+            return Some(v);
+        }
+    }
+
+    // 3. Check android/settings.gradle.kts
+    if let Ok(content) = std::fs::read_to_string("android/settings.gradle.kts") {
+        if let Some(v) = parse_agp_from_gradle(&content) {
+            return Some(v);
+        }
+    }
+
+    // 4. Check android/build.gradle (classic approach)
+    if let Ok(content) = std::fs::read_to_string("android/build.gradle") {
+        if let Some(v) = parse_agp_from_gradle(&content) {
+            return Some(v);
+        }
+    }
+
+    // 5. Check android/build.gradle.kts
+    if let Ok(content) = std::fs::read_to_string("android/build.gradle.kts") {
+        if let Some(v) = parse_agp_from_gradle(&content) {
+            return Some(v);
+        }
+    }
+
+    // 6. Check React Native gradle plugin's version catalog (RN 0.74+)
+    if let Ok(content) = std::fs::read_to_string("node_modules/@react-native/gradle-plugin/gradle/libs.versions.toml") {
+        for line in content.lines() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("agp") && trimmed.contains('=') {
+                if let Some(version) = extract_quoted_version(trimmed) {
+                    return Some(version);
+                }
+            }
+        }
+    }
+
+    None
+}
+
+fn parse_agp_from_gradle(content: &str) -> Option<String> {
+    for line in content.lines() {
+        // classpath("com.android.tools.build:gradle:8.0.0")
+        // classpath 'com.android.tools.build:gradle:8.0.0'
+        if line.contains("com.android.tools.build:gradle:") {
+            return line.split("gradle:")
+                .nth(1)
+                .and_then(|s| s.split(|c| c == '"' || c == '\'' || c == ')').next())
+                .map(|s| s.to_string());
+        }
+
+        // id("com.android.application") version "8.0.0"
+        // id 'com.android.application' version '8.0.0'
+        if line.contains("com.android.application") && line.contains("version") {
+            return extract_version_after_keyword(line, "version");
+        }
+    }
+    None
+}
+
+fn extract_quoted_version(line: &str) -> Option<String> {
+    // Extract version from: key = "1.2.3" or key = '1.2.3'
+    line.split(|c| c == '"' || c == '\'')
+        .find(|s| s.chars().next().map(|c| c.is_ascii_digit()).unwrap_or(false))
+        .map(|s| s.to_string())
+}
+
+fn extract_version_after_keyword(line: &str, keyword: &str) -> Option<String> {
+    line.split(keyword)
+        .nth(1)
+        .and_then(|s| {
+            s.split(|c| c == '"' || c == '\'')
+                .find(|s| s.chars().next().map(|c| c.is_ascii_digit()).unwrap_or(false))
+        })
+        .map(|s| s.to_string())
+}
+
+fn check_kotlin() -> EnvCheck {
+    // Check if we're in a React Native project with android directory
+    let has_android_dir = std::path::Path::new("android").exists();
+
+    // Try multiple sources for Kotlin version
+    let version = find_kotlin_version();
+
+    match version {
+        Some(v) => EnvCheck {
+            name: "kotlin".to_string(),
+            ok: true,
+            version: Some(format!("Kotlin {}", v)),
+            error: None,
+            fix: None,
+            required_for: vec!["android".to_string()],
+        },
+        None => {
+            if has_android_dir {
+                EnvCheck {
+                    name: "kotlin".to_string(),
+                    ok: true,
+                    version: Some("Could not parse Kotlin version".to_string()),
+                    error: None,
+                    fix: None,
+                    required_for: vec!["android".to_string()],
+                }
+            } else {
+                EnvCheck {
+                    name: "kotlin".to_string(),
+                    ok: false,
+                    version: None,
+                    error: Some("android/ not found (run from RN project directory)".to_string()),
+                    fix: Some("Run this command from your React Native project directory.".to_string()),
+                    required_for: vec![],
+                }
+            }
+        }
+    }
+}
+
+fn find_kotlin_version() -> Option<String> {
+    // 1. Check gradle/libs.versions.toml (version catalog)
+    if let Ok(content) = std::fs::read_to_string("android/gradle/libs.versions.toml") {
+        for line in content.lines() {
+            let trimmed = line.trim();
+            // Look for: kotlin = "1.9.24" or kotlinVersion = "1.9.24"
+            if (trimmed.starts_with("kotlin") && !trimmed.contains("kotlinCompilerExtensionVersion"))
+                && trimmed.contains('=') {
+                if let Some(version) = extract_quoted_version(trimmed) {
+                    return Some(version);
+                }
+            }
+        }
+    }
+
+    // 2. Check android/settings.gradle
+    if let Ok(content) = std::fs::read_to_string("android/settings.gradle") {
+        if let Some(v) = parse_kotlin_from_gradle(&content) {
+            return Some(v);
+        }
+    }
+
+    // 3. Check android/settings.gradle.kts
+    if let Ok(content) = std::fs::read_to_string("android/settings.gradle.kts") {
+        if let Some(v) = parse_kotlin_from_gradle(&content) {
+            return Some(v);
+        }
+    }
+
+    // 4. Check android/build.gradle
+    if let Ok(content) = std::fs::read_to_string("android/build.gradle") {
+        if let Some(v) = parse_kotlin_from_gradle(&content) {
+            return Some(v);
+        }
+    }
+
+    // 5. Check android/build.gradle.kts
+    if let Ok(content) = std::fs::read_to_string("android/build.gradle.kts") {
+        if let Some(v) = parse_kotlin_from_gradle(&content) {
+            return Some(v);
+        }
+    }
+
+    None
+}
+
+fn parse_kotlin_from_gradle(content: &str) -> Option<String> {
+    for line in content.lines() {
+        // kotlinVersion = "1.9.0" or ext.kotlinVersion = '1.9.0'
+        if line.contains("kotlinVersion") && line.contains('=') {
+            return extract_quoted_version(line);
+        }
+
+        // id("org.jetbrains.kotlin.android") version "1.9.0"
+        // id 'org.jetbrains.kotlin.android' version '1.9.0'
+        if line.contains("org.jetbrains.kotlin") && line.contains("version") {
+            return extract_version_after_keyword(line, "version");
+        }
+
+        // classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.0")
+        if line.contains("kotlin-gradle-plugin:") {
+            return line.split("kotlin-gradle-plugin:")
+                .nth(1)
+                .and_then(|s| s.split(|c| c == '"' || c == '\'' || c == ')').next())
+                .map(|s| s.to_string());
+        }
+    }
+    None
+}
+
+fn check_ndk() -> EnvCheck {
+    let android_home = std::env::var("ANDROID_HOME")
+        .or_else(|_| std::env::var("ANDROID_SDK_ROOT"));
+
+    match android_home {
+        Ok(sdk_path) => {
+            let ndk_path = std::path::Path::new(&sdk_path).join("ndk");
+
+            if ndk_path.exists() {
+                // List NDK versions installed
+                if let Ok(entries) = std::fs::read_dir(&ndk_path) {
+                    let versions: Vec<String> = entries
+                        .filter_map(|e| e.ok())
+                        .filter(|e| e.path().is_dir())
+                        .filter_map(|e| e.file_name().into_string().ok())
+                        .filter(|name| name.chars().next().map(|c| c.is_ascii_digit()).unwrap_or(false))
+                        .collect();
+
+                    if !versions.is_empty() {
+                        return EnvCheck {
+                            name: "ndk".to_string(),
+                            ok: true,
+                            version: Some(format!("NDK {}", versions.join(", "))),
+                            error: None,
+                            fix: None,
+                            required_for: vec![], // Optional, for native modules
+                        };
                     }
-                });
+                }
+            }
 
-            match version {
-                Some(v) => EnvCheck {
-                    name: "agp".to_string(),
-                    ok: true,
-                    version: Some(format!("Android Gradle Plugin {}", v)),
-                    error: None,
-                    fix: None,
-                    required_for: vec!["android".to_string()],
-                },
-                None => EnvCheck {
-                    name: "agp".to_string(),
-                    ok: true,
-                    version: Some("Could not parse version from build.gradle".to_string()),
-                    error: None,
-                    fix: None,
-                    required_for: vec!["android".to_string()],
-                },
+            // Check for legacy ndk-bundle
+            let ndk_bundle = std::path::Path::new(&sdk_path).join("ndk-bundle");
+            if ndk_bundle.exists() {
+                // Try to read source.properties for version
+                let props_path = ndk_bundle.join("source.properties");
+                if let Ok(content) = std::fs::read_to_string(props_path) {
+                    let version = content.lines()
+                        .find(|line| line.starts_with("Pkg.Revision"))
+                        .and_then(|line| line.split('=').nth(1))
+                        .map(|v| v.trim().to_string())
+                        .unwrap_or_else(|| "installed".to_string());
+
+                    return EnvCheck {
+                        name: "ndk".to_string(),
+                        ok: true,
+                        version: Some(format!("NDK {}", version)),
+                        error: None,
+                        fix: None,
+                        required_for: vec![],
+                    };
+                }
+            }
+
+            EnvCheck {
+                name: "ndk".to_string(),
+                ok: false,
+                version: None,
+                error: Some("NDK not installed (optional, for native modules)".to_string()),
+                fix: Some("Install NDK via Android Studio > SDK Manager > SDK Tools > NDK".to_string()),
+                required_for: vec![],
             }
         },
         Err(_) => EnvCheck {
-            name: "agp".to_string(),
+            name: "ndk".to_string(),
             ok: false,
             version: None,
-            error: Some("android/build.gradle not found (run from RN project directory)".to_string()),
-            fix: Some("Run this command from your React Native project directory.".to_string()),
-            // Only mark as required if we're in a project with android directory
-            required_for: if has_android_dir { vec!["android".to_string()] } else { vec![] },
+            error: Some("ANDROID_HOME not set".to_string()),
+            fix: Some("Set ANDROID_HOME environment variable".to_string()),
+            required_for: vec![],
+        },
+    }
+}
+
+fn check_build_tools() -> EnvCheck {
+    let android_home = std::env::var("ANDROID_HOME")
+        .or_else(|_| std::env::var("ANDROID_SDK_ROOT"));
+
+    match android_home {
+        Ok(sdk_path) => {
+            let build_tools_path = std::path::Path::new(&sdk_path).join("build-tools");
+
+            if build_tools_path.exists() {
+                if let Ok(entries) = std::fs::read_dir(&build_tools_path) {
+                    let mut versions: Vec<String> = entries
+                        .filter_map(|e| e.ok())
+                        .filter(|e| e.path().is_dir())
+                        .filter_map(|e| e.file_name().into_string().ok())
+                        .collect();
+
+                    versions.sort();
+                    versions.reverse(); // Latest first
+
+                    if !versions.is_empty() {
+                        return EnvCheck {
+                            name: "build_tools".to_string(),
+                            ok: true,
+                            version: Some(format!("Build Tools {}", versions.first().unwrap())),
+                            error: None,
+                            fix: None,
+                            required_for: vec!["android".to_string()],
+                        };
+                    }
+                }
+            }
+
+            EnvCheck {
+                name: "build_tools".to_string(),
+                ok: false,
+                version: None,
+                error: Some("Android Build Tools not installed".to_string()),
+                fix: Some("Install via Android Studio > SDK Manager > SDK Tools > Android SDK Build-Tools".to_string()),
+                required_for: vec!["android".to_string()],
+            }
+        },
+        Err(_) => EnvCheck {
+            name: "build_tools".to_string(),
+            ok: false,
+            version: None,
+            error: Some("ANDROID_HOME not set".to_string()),
+            fix: Some("Set ANDROID_HOME environment variable".to_string()),
+            required_for: vec!["android".to_string()],
         },
     }
 }
