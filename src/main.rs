@@ -314,6 +314,26 @@ fn run(args: &Args) -> Result<()> {
     }
 
     if args.delete_emulators {
+        // Kill any running emulators first by finding all emulator devices
+        let mut killed_any = false;
+        if let Ok(output) = Command::new("adb").args(["devices"]).output() {
+            let devices = String::from_utf8_lossy(&output.stdout);
+            for line in devices.lines() {
+                if line.starts_with("emulator-") {
+                    if let Some(device_id) = line.split_whitespace().next() {
+                        let _ = Command::new("adb")
+                            .args(["-s", device_id, "emu", "kill"])
+                            .output();
+                        killed_any = true;
+                    }
+                }
+            }
+        }
+        // Wait for emulators to shut down
+        if killed_any {
+            std::thread::sleep(std::time::Duration::from_secs(2));
+        }
+
         let emulators = list_emulators();
         if emulators.emulators.is_empty() {
             if args.json {
