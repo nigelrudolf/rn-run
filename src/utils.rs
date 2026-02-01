@@ -7,6 +7,38 @@ use chrono::Local;
 const LOG_DIR: &str = ".rn-run/logs";
 const MAX_LOGS: usize = 10;
 
+/// Get the preferred Android device, prioritizing physical devices over emulators.
+/// Returns the device ID if a physical device is found, None otherwise.
+pub fn get_preferred_android_device() -> Option<String> {
+    let output = Command::new("adb")
+        .args(["devices"])
+        .output()
+        .ok()?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let mut physical_device: Option<String> = None;
+    let mut emulator_device: Option<String> = None;
+
+    for line in stdout.lines().skip(1) {
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() >= 2 && parts[1] == "device" {
+            let device_id = parts[0];
+            if device_id.starts_with("emulator-") {
+                if emulator_device.is_none() {
+                    emulator_device = Some(device_id.to_string());
+                }
+            } else {
+                // Physical device found - prioritize it
+                physical_device = Some(device_id.to_string());
+                break;
+            }
+        }
+    }
+
+    // Return physical device if found, otherwise emulator
+    physical_device.or(emulator_device)
+}
+
 pub fn get_current_directory_logged(log: Option<&LogWriter>) -> Result<String> {
     let current_dir = env::current_dir()?
         .to_str()
@@ -375,9 +407,24 @@ pub fn launch_sim(react_native_version: &str, args: &Args, log_writer: &LogWrite
     let log_path = &log_writer.path;
 
     let yarn_ios = "yarn react-native run-ios".to_string();
-    let yarn_android = "yarn react-native run-android --active-arch-only".to_string();
     let npx_ios = format!("npx react-native run-ios --simulator=\"{}\"", args.simulator.as_ref().unwrap_or(&"iPhone 15".to_string()));
-    let npx_android = "npx react-native run-android --active-arch-only".to_string();
+
+    // For Android, check for preferred device (physical devices prioritized over emulators)
+    let device_flag = if args.android {
+        if let Some(device_id) = get_preferred_android_device() {
+            if !device_id.starts_with("emulator-") {
+                log_writer.log_green(&format!("[rn-run]: Physical device detected: {}", device_id));
+            }
+            format!(" --deviceId={}", device_id)
+        } else {
+            String::new()
+        }
+    } else {
+        String::new()
+    };
+
+    let yarn_android = format!("yarn react-native run-android --active-arch-only{}", device_flag);
+    let npx_android = format!("npx react-native run-android --active-arch-only{}", device_flag);
 
     let base_command = if args.ios && is_version_greater_or_equal(react_native_version, "0.74") {
         npx_ios
