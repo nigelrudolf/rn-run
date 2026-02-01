@@ -9,6 +9,12 @@ pub fn check_environment() -> EnvCheckResult {
     let mut has_errors = false;
     let mut has_warnings = false;
 
+    // macOS version
+    checks.push(check_macos());
+
+    // Command Line Tools
+    checks.push(check_clt());
+
     // Node.js
     checks.push(check_node());
 
@@ -30,11 +36,20 @@ pub fn check_environment() -> EnvCheckResult {
     // Ruby (iOS - needed for CocoaPods)
     checks.push(check_ruby());
 
+    // Bundler (iOS - for Gemfile management)
+    checks.push(check_bundler());
+
     // Android SDK
     checks.push(check_android_sdk());
 
     // Java (Android)
     checks.push(check_java());
+
+    // Gradle (Android)
+    checks.push(check_gradle());
+
+    // Android Gradle Plugin (Android)
+    checks.push(check_android_gradle_plugin());
 
     // Calculate overall status
     for check in &checks {
@@ -68,6 +83,61 @@ pub fn check_environment() -> EnvCheckResult {
         overall_status,
         checks,
         summary,
+    }
+}
+
+fn check_macos() -> EnvCheck {
+    match get_command_version("sw_vers", &["-productVersion"]) {
+        Some(version) => EnvCheck {
+            name: "macos".to_string(),
+            ok: true,
+            version: Some(format!("macOS {}", version)),
+            error: None,
+            fix: None,
+            required_for: vec!["ios".to_string(), "android".to_string()],
+        },
+        None => EnvCheck {
+            name: "macos".to_string(),
+            ok: false,
+            version: None,
+            error: Some("Could not determine macOS version".to_string()),
+            fix: None,
+            required_for: vec!["ios".to_string(), "android".to_string()],
+        },
+    }
+}
+
+fn check_clt() -> EnvCheck {
+    // Check Command Line Tools version
+    let output = Command::new("pkgutil")
+        .args(["--pkg-info=com.apple.pkg.CLTools_Executables"])
+        .output();
+
+    match output {
+        Ok(out) if out.status.success() => {
+            let stdout = String::from_utf8_lossy(&out.stdout);
+            let version = stdout.lines()
+                .find(|line| line.starts_with("version:"))
+                .map(|line| line.replace("version:", "").trim().to_string())
+                .unwrap_or_else(|| "installed".to_string());
+
+            EnvCheck {
+                name: "clt".to_string(),
+                ok: true,
+                version: Some(format!("Command Line Tools {}", version)),
+                error: None,
+                fix: None,
+                required_for: vec!["ios".to_string()],
+            }
+        },
+        _ => EnvCheck {
+            name: "clt".to_string(),
+            ok: false,
+            version: None,
+            error: Some("Command Line Tools not installed".to_string()),
+            fix: Some("Install Command Line Tools: xcode-select --install".to_string()),
+            required_for: vec!["ios".to_string()],
+        },
     }
 }
 
@@ -295,6 +365,152 @@ fn check_java() -> EnvCheck {
             error: Some("Java not found".to_string()),
             fix: Some("Install Java: brew install openjdk@17".to_string()),
             required_for: vec!["android".to_string()],
+        },
+    }
+}
+
+fn check_bundler() -> EnvCheck {
+    match get_command_version("bundler", &["--version"]) {
+        Some(version) => EnvCheck {
+            name: "bundler".to_string(),
+            ok: true,
+            version: Some(version),
+            error: None,
+            fix: None,
+            required_for: vec![], // Optional, but useful for iOS
+        },
+        None => EnvCheck {
+            name: "bundler".to_string(),
+            ok: false,
+            version: None,
+            error: Some("Bundler not found (optional, for Gemfile management)".to_string()),
+            fix: Some("Install Bundler: gem install bundler".to_string()),
+            required_for: vec![],
+        },
+    }
+}
+
+fn check_gradle() -> EnvCheck {
+    // Check if we're in a React Native project with android directory
+    let has_android_dir = std::path::Path::new("android").exists();
+
+    // Try to get Gradle version from the project's gradlew wrapper first
+    let gradlew_output = Command::new("./android/gradlew")
+        .args(["--version"])
+        .output();
+
+    if let Ok(out) = gradlew_output {
+        if out.status.success() {
+            let stdout = String::from_utf8_lossy(&out.stdout);
+            let version = stdout.lines()
+                .find(|line| line.starts_with("Gradle "))
+                .map(|line| line.to_string())
+                .unwrap_or_else(|| "installed".to_string());
+
+            return EnvCheck {
+                name: "gradle".to_string(),
+                ok: true,
+                version: Some(version),
+                error: None,
+                fix: None,
+                required_for: vec!["android".to_string()],
+            };
+        }
+    }
+
+    // Fall back to system gradle
+    match get_command_version("gradle", &["--version"]) {
+        Some(version) => {
+            let version_line = version.lines()
+                .find(|line| line.starts_with("Gradle "))
+                .unwrap_or(&version)
+                .to_string();
+
+            EnvCheck {
+                name: "gradle".to_string(),
+                ok: true,
+                version: Some(version_line),
+                error: None,
+                fix: None,
+                required_for: vec!["android".to_string()],
+            }
+        },
+        None => EnvCheck {
+            name: "gradle".to_string(),
+            ok: false,
+            version: None,
+            error: Some("Gradle not found (run from RN project directory for gradlew)".to_string()),
+            fix: Some("Gradle is bundled with Android projects. Run from your RN project directory.".to_string()),
+            // Only mark as required if we're in a project with android directory
+            required_for: if has_android_dir { vec!["android".to_string()] } else { vec![] },
+        },
+    }
+}
+
+fn check_android_gradle_plugin() -> EnvCheck {
+    // Check if we're in a React Native project with android directory
+    let has_android_dir = std::path::Path::new("android").exists();
+
+    // Read android/build.gradle to find the AGP version
+    let build_gradle = std::fs::read_to_string("android/build.gradle");
+
+    match build_gradle {
+        Ok(content) => {
+            // Look for patterns like:
+            // classpath("com.android.tools.build:gradle:8.0.0")
+            // classpath "com.android.tools.build:gradle:8.0.0"
+            // id 'com.android.application' version '8.0.0'
+            let version = content.lines()
+                .find(|line| line.contains("com.android.tools.build:gradle:") ||
+                            (line.contains("com.android.application") && line.contains("version")))
+                .and_then(|line| {
+                    if line.contains("com.android.tools.build:gradle:") {
+                        // Extract version from classpath declaration
+                        line.split("gradle:")
+                            .nth(1)
+                            .and_then(|s| s.split(|c| c == '"' || c == '\'').next())
+                            .map(|s| s.to_string())
+                    } else {
+                        // Extract version from plugin DSL
+                        line.split("version")
+                            .nth(1)
+                            .and_then(|s| {
+                                s.trim()
+                                    .trim_start_matches(|c| c == ' ' || c == '=' || c == '"' || c == '\'')
+                                    .split(|c| c == '"' || c == '\'')
+                                    .next()
+                            })
+                            .map(|s| s.to_string())
+                    }
+                });
+
+            match version {
+                Some(v) => EnvCheck {
+                    name: "agp".to_string(),
+                    ok: true,
+                    version: Some(format!("Android Gradle Plugin {}", v)),
+                    error: None,
+                    fix: None,
+                    required_for: vec!["android".to_string()],
+                },
+                None => EnvCheck {
+                    name: "agp".to_string(),
+                    ok: true,
+                    version: Some("Could not parse version from build.gradle".to_string()),
+                    error: None,
+                    fix: None,
+                    required_for: vec!["android".to_string()],
+                },
+            }
+        },
+        Err(_) => EnvCheck {
+            name: "agp".to_string(),
+            ok: false,
+            version: None,
+            error: Some("android/build.gradle not found (run from RN project directory)".to_string()),
+            fix: Some("Run this command from your React Native project directory.".to_string()),
+            // Only mark as required if we're in a project with android directory
+            required_for: if has_android_dir { vec!["android".to_string()] } else { vec![] },
         },
     }
 }
