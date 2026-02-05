@@ -415,7 +415,7 @@ pub fn launch_sim(react_native_version: &str, args: &Args, log_writer: &LogWrite
             if !device_id.starts_with("emulator-") {
                 log_writer.log_green(&format!("[rn-run]: Physical device detected: {}", device_id));
             }
-            format!(" --deviceId={}", device_id)
+            format!(" --device={}", device_id)
         } else {
             String::new()
         }
