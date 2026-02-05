@@ -163,8 +163,11 @@ On MacOS you will need to set **Ask before closing** to **Never** in Terminal se
 ```
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
-
-2. Build & Install
+2. Install xcode-select: 
+```
+xcode-select --install
+```
+3. Build & Install
 ```
 cargo install rn-run
 ```
