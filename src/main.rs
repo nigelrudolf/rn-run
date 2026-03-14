@@ -252,6 +252,18 @@ fn run(args: &Args) -> Result<()> {
     }
 
     if args.clean_gradle {
+        // Stop Gradle daemons first
+        let gradlew = std::path::Path::new("android/gradlew");
+        if gradlew.exists() {
+            if !args.json {
+                println!("\x1b[33m[rn-run]: stopping Gradle daemons...\x1b[0m");
+            }
+            let _ = Command::new("./android/gradlew")
+                .args(["--stop"])
+                .current_dir(".")
+                .status();
+        }
+
         Command::new("rm").arg("-rf").arg("android/build").status()
             .map_err(|_| AppError::CommandFailed("rm -rf android/build".to_string()))?;
         Command::new("rm").arg("-rf").arg("android/app/build").status()
@@ -259,15 +271,44 @@ fn run(args: &Args) -> Result<()> {
         Command::new("rm").arg("-rf").arg("android/.gradle").status()
             .map_err(|_| AppError::CommandFailed("rm -rf android/.gradle".to_string()))?;
 
+        // Clean version-specific global Gradle cache
+        let mut global_cache_msg = String::new();
+        let wrapper_props = std::path::Path::new("android/gradle/wrapper/gradle-wrapper.properties");
+        if let Ok(contents) = std::fs::read_to_string(wrapper_props) {
+            // Parse version from distributionUrl, e.g. gradle-8.8-all.zip or gradle-8.8-bin.zip
+            if let Some(version) = contents.lines()
+                .find(|l| l.starts_with("distributionUrl"))
+                .and_then(|l| {
+                    let re_start = l.find("gradle-")?;
+                    let after = &l[re_start + 7..];
+                    let end = after.find('-')?;
+                    Some(after[..end].to_string())
+                })
+            {
+                if let Ok(home) = std::env::var("HOME") {
+                    let cache_path = std::path::PathBuf::from(&home).join(".gradle").join("caches").join(&version);
+                    if cache_path.exists() {
+                        Command::new("rm").arg("-rf").arg(&cache_path).status()
+                            .map_err(|_| AppError::CommandFailed(format!("rm -rf ~/.gradle/caches/{}", version)))?;
+                        global_cache_msg = format!(", ~/.gradle/caches/{}", version);
+                    }
+                }
+            }
+        }
+
         if args.json {
             Output::success("clean-gradle", ActionResult {
                 action: "clean-gradle".to_string(),
-                message: "Cleaned android/build, android/app/build, android/.gradle".to_string(),
+                message: format!("Stopped Gradle daemons. Cleaned android/build, android/app/build, android/.gradle{}", global_cache_msg),
             }).print();
         } else {
+            println!("\x1b[32m[rn-run]: Gradle daemons stopped\x1b[0m");
             println!("\x1b[32m[rn-run]: android/build deleted\x1b[0m");
             println!("\x1b[32m[rn-run]: android/app/build deleted\x1b[0m");
             println!("\x1b[32m[rn-run]: android/.gradle deleted\x1b[0m");
+            if !global_cache_msg.is_empty() {
+                println!("\x1b[32m[rn-run]:{} deleted\x1b[0m", global_cache_msg);
+            }
         }
         return Ok(());
     }
